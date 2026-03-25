@@ -1,0 +1,9 @@
+# Blue stack upstreams
+# API on 5000, Frontend on 5001
+upstream api_backend {
+    server 127.0.0.1:5000;
+}
+
+upstream frontend_backend {
+    server 127.0.0.1:5001;
+}

@@ -1,0 +1,9 @@
+# Green stack upstreams
+# API on 5010, Frontend on 5011
+upstream api_backend {
+    server 127.0.0.1:5010;
+}
+
+upstream frontend_backend {
+    server 127.0.0.1:5011;
+}

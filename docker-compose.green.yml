@@ -1,0 +1,26 @@
+# Prod — GREEN stack
+# Ports: API 5010, Frontend 5011
+# Usage (CI sets .env.green):
+#   docker compose --env-file .env.green -f docker-compose.green.yml up -d
+
+services:
+  api-green:
+    image: ${IMAGE_API}
+    container_name: api-green
+    ports:
+      - "5010:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
+      Supabase__Url: ${SUPABASE_URL}
+      Supabase__JwtSecret: ${SUPABASE_JWT_SECRET}
+      Staff__JwtSecret: ${STAFF_JWT_SECRET}
+    restart: unless-stopped
+
+  frontend-green:
+    image: ${IMAGE_FRONTEND}
+    container_name: frontend-green
+    ports:
+      - "5011:80"
+    restart: unless-stopped

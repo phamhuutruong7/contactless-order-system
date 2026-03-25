@@ -1,0 +1,37 @@
+# ----- Node / VitePress -----
+node_modules/
+dist/
+site/.vitepress/dist/
+site/.vitepress/cache/
+
+# ----- .NET -----
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+# ----- Environment files -----
+.env
+.env.blue
+.env.green
+.env.dev
+!.env.example
+
+# ----- Docker -----
+docker-compose.override.yml
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----- IDE -----
+.idea/
+*.iml
+
+# ----- BMAD agent workspace -----
+_bmad/
+_bmad-output/
+Documents/

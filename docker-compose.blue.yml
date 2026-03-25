@@ -1,0 +1,26 @@
+# Prod — BLUE stack
+# Ports: API 5000, Frontend 5001
+# Usage (CI sets .env.blue):
+#   docker compose --env-file .env.blue -f docker-compose.blue.yml up -d
+
+services:
+  api-blue:
+    image: ${IMAGE_API}
+    container_name: api-blue
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
+      Supabase__Url: ${SUPABASE_URL}
+      Supabase__JwtSecret: ${SUPABASE_JWT_SECRET}
+      Staff__JwtSecret: ${STAFF_JWT_SECRET}
+    restart: unless-stopped
+
+  frontend-blue:
+    image: ${IMAGE_FRONTEND}
+    container_name: frontend-blue
+    ports:
+      - "5001:80"
+    restart: unless-stopped

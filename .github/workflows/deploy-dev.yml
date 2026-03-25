@@ -1,0 +1,80 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [dev]
+
+env:
+  GHCR_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Build & push API image ───────────────────────────────────
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./src/Api
+          push: true
+          tags: |
+            ${{ env.GHCR_PREFIX }}/api:dev-${{ github.sha }}
+            ${{ env.GHCR_PREFIX }}/api:dev-latest
+
+      # ── Build & push Frontend image ──────────────────────────────
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./src/Web
+          push: true
+          tags: |
+            ${{ env.GHCR_PREFIX }}/frontend:dev-${{ github.sha }}
+            ${{ env.GHCR_PREFIX }}/frontend:dev-latest
+
+      # ── Deploy to Dev VM via SSH ─────────────────────────────────
+      - name: Deploy to Dev VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ~/app
+
+            # Log in to GHCR from the VM
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Write .env for this deploy
+            cat > .env << 'EOF'
+            IMAGE_API=${{ env.GHCR_PREFIX }}/api:dev-${{ github.sha }}
+            IMAGE_FRONTEND=${{ env.GHCR_PREFIX }}/frontend:dev-${{ github.sha }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}
+            STAFF_JWT_SECRET=${{ secrets.STAFF_JWT_SECRET }}
+            EOF
+
+            # Pull latest images and recreate containers
+            docker compose --env-file .env pull
+            docker compose --env-file .env up -d --remove-orphans
+
+            # Clean up old images
+            docker image prune -f
+
+            echo "Dev deployment complete: $(date -u)"
