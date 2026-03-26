@@ -22,10 +22,10 @@
                               │  PostgreSQL · GoTrue Auth · S3      │
                               └────────────────────────────────────┘
 ┌───────────────────────────────────────────────────────────┐
-│            RESTAURANT LOCAL NETWORK                        │
-│  Print Client ──► Kitchen Thermal Printer  (food items)   │
-│             └───► Bar Thermal Printer      (drink items)   │
-│  (SignalR subscriber — receives print events from backend) │
+│            CLOUDPRNT PRINTERS (polling)                    │
+│  Kitchen mC-Print3 ──► polls GET /api/print/poll           │
+│  Bar mC-Print3     ──► polls GET /api/print/poll           │
+│  (each printer polls backend every 2–3 s via CloudPRNT)    │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -38,6 +38,7 @@
 | App | Users | Stack |
 |-----|-------|-------|
 | Unified SPA | All roles (Guest, Staff, Owner, Admin) | Vue 3 + Vuetify, role-based routing |
+| PWA Support | Guest (primary) | Service Worker (asset caching, offline fallback) + Web App Manifest; installable on iOS Safari 15+ and Android Chrome 100+ |
 
 The single Vuetify SPA is deployed on **Vercel**. It renders different views based on user role: guests access it anonymously via QR scan, while staff, owners, and admins authenticate before reaching their respective dashboards.
 
@@ -48,8 +49,8 @@ Structured following [Jason Taylor's Clean Architecture template](https://github
 | Layer | Responsibilities |
 |-------|------------------|
 | **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
-| **Application** | CQRS Commands/Queries (MediatR), Interfaces, DTOs, FluentValidation |
-| **Infrastructure** | EF Core + Npgsql, SignalR hub implementation, ePOS-Print HTTP adapter |
+| **Application** | CQRS Commands/Queries (Wolverine), Interfaces, DTOs, FluentValidation, durable PostgreSQL outbox |
+| **Infrastructure** | EF Core + Npgsql, SignalR hub implementation, CloudPRNT polling controller |
 | **Api** | ASP.NET Core Web API — controllers or minimal endpoints; JWT middleware |
 
 - JWT validation on all protected routes (Supabase-issued tokens)
@@ -131,52 +132,39 @@ var api = builder.AddProject<Projects.Api>("api")
 
 ## Thermal Print Architecture
 
-When an order is confirmed, the backend splits items by `item_type` and dispatches SignalR events to restaurant-scoped groups:
-- Food items → `KitchenPrintEvent` → group `restaurant-{restaurantId}-kitchen`
-- Drink items → `BarPrintEvent` → group `restaurant-{restaurantId}-bar`
+When an order is confirmed, the backend creates print jobs — persisted via Wolverine's durable PostgreSQL outbox — for each printer station:
+- Food items → kitchen print job queued for kitchen device token
+- Drink items → bar print job queued for bar device token
 
-### Print Client Agent (.NET 10 Worker Service)
+### CloudPRNT Polling Architecture (Star mC-Print3)
 
-One **Print Client Agent** per restaurant runs on-premises. It subscribes to **both** SignalR groups and routes internally based on event type.
-
-```
-SignalR Hub (Civo VM)
-  └─► Print Client Agent (restaurant local PC — .NET 10 Worker Service .exe)
-        ├── Epson TM-T82III — Kitchen Printer (HTTP POST via ePOS-Print XML)
-        └── Epson TM-T82III — Bar Printer     (HTTP POST via ePOS-Print XML)
-```
-
-Print is sent via **ePOS-Print XML** over HTTP to each printer's local IP:
+Each **Star mC-Print3** printer connects directly to the internet and polls the backend via the **Star CloudPRNT** protocol. No local software or agents are required.
 
 ```
-POST http://{printerIp}/cgi-bin/epos/service.cgi
-Content-Type: text/xml; charset=utf-8
-SOAPAction: "http://www.epson-pos.com/schemas/2011/03/epos-print"
+Star mC-Print3 (kitchen) ──► polls GET /api/print/poll?deviceToken=<kitchen-token>
+Star mC-Print3 (bar)     ──► polls GET /api/print/poll?deviceToken=<bar-token>
+                                        │
+                               .NET 10 API (Civo VM)
+                               Wolverine outbox (PostgreSQL)
 ```
 
-Agent configuration (`appsettings.json`):
+The CloudPRNT flow:
 
-```json
-{
-  "PrintAgent": {
-    "BackendUrl": "https://api.example.com",
-    "RestaurantId": "<uuid>",
-    "DeviceToken": "<owner-generated-token>",
-    "KitchenPrinterIp": "192.168.1.101",
-    "BarPrinterIp": "192.168.1.102"
-  }
-}
-```
+1. **Printer polls** `GET /api/print/poll?deviceToken=<token>` every 2–3 seconds
+2. Backend responds with `{"jobReady": true, ...}` when a print job is queued
+3. **Printer fetches content** `GET /api/print/content/{jobToken}` — backend returns Base64-encoded Star ESC/POS commands
+4. **Printer confirms** `POST /api/print/status/{jobId}` after printing
 
 | Concern | Approach |
 |---------|----------|
-| Printer model | Epson TM-T82III |
-| Print protocol | ePOS-Print XML over HTTP (Epson proprietary) |
-| Routing | Single agent per restaurant; routes by event type to correct printer IP |
-| Authentication | `DeviceToken` in SignalR connection header, generated by owner in Owner Dashboard |
-| Failure handling | Fire-and-forget — failed print fires `PrintFailed` event → Staff Dashboard alert |
-| IP configuration | Static IPs in `appsettings.json` (local config, not stored in backend) |
-| Failure handling | Offline printer triggers `PrintFailed` event → Staff Dashboard alert |
+| Printer model | Star Micronics mC-Print3 (CloudPRNT-enabled, ~€400–600/unit) |
+| Print protocol | Star CloudPRNT over HTTPS — printer initiates and polls backend |
+| Routing | Two device tokens per restaurant: one kitchen, one bar — registered by owner in Owner Dashboard |
+| Authentication | Per-printer `deviceToken` validated on every poll request |
+| Local installation | None — printer connects via Ethernet/Wi-Fi directly to the internet |
+| Print format | Star ESC/POS commands, Base64-encoded in CloudPRNT content response |
+| Failure durability | Wolverine PostgreSQL outbox ensures jobs survive API restarts |
+| Failure alerting | Unconsumed job after timeout fires `PrintFailed` event → Staff Dashboard alert |
 | Ticket content | Table #, Order #, items + quantities + notes, timestamp |
 
 ---
@@ -188,7 +176,7 @@ Agent configuration (`appsettings.json`):
 | Transport encryption | TLS 1.2+ via Nginx |
 | Auth tokens | Supabase JWT (RS256, 1h expiry) |
 | Multi-tenant isolation | Supabase RLS policies per `restaurant_id` |
-| QR token safety | HMAC-signed table token — no PII embedded |
+| QR token safety | HMAC-signed restaurant-level token — no PII embedded; table number entered by guest at checkout |
 | Staff PIN storage | bcrypt-hashed, never stored in plaintext |
 | CORS | API restricted to Vercel deployment domain and preview URLs |
 | Rate limiting | Nginx + ASP.NET Core rate limiter middleware |

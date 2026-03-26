@@ -31,10 +31,9 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 |---|----------|--------------------|
 | G1 | Giảm thời gian đặt ORDER trung bình | < 3 phút từ lúc quét QR đến khi xác nhận đơn |
 | G2 | Loại bỏ sai sót chuyển tiếp order | 0 đơn hàng qua trung gian nhân viên trong luồng thông thường |
-| G3 | Sự hài lòng của thực khách | ≥ 4,2 / 5 điểm đánh giá sau bữa ăn |
-| G4 | Tốc độ onboarding nhà hàng | Nhà hàng mới hoạt động trong vòng 30 phút |
-| G5 | Uptime nền tảng | SLA 99,5% hàng tháng |
-| G6 | Độ trễ cập nhật thời gian thực | Cập nhật trạng thái Order < 1 giây (P95) |
+| G3 | Tốc độ onboarding nhà hàng | Nhà hàng mới hoạt động trong vòng 30 phút |
+| G4 | Uptime nền tảng | SLA 99,5% hàng tháng |
+| G5 | Độ trễ cập nhật thời gian thực | Cập nhật trạng thái Order < 1 giây (P95) |
 
 ---
 
@@ -42,7 +41,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 
 ### Có trong phạm vi (v1.0)
 
-- Tạo mã QR riêng cho từng bàn
+- Tạo mã QR cho từng nhà hàng (một mã QR ký HMAC duy nhất mỗi nhà hàng; thực khách nhập số bàn khi thanh toán)
 - Thực khách xem menu kỹ thuật số và đặt món
 - Theo dõi trạng thái đơn hàng thời gian thực (thực khách + bếp + nhân viên)
 - Hệ thống in vé nhiệt (máy in bếp + máy in quầy bar)
@@ -52,6 +51,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 - Xác thực JWT qua Supabase và lưu trữ dữ liệu
 - Hub WebSocket SignalR đồng bộ trạng thái thời gian thực
 - UI responsive ưu tiên mobile (không cần cài app)
+- PWA (ứng dụng web có thể cài đặt — Service Worker + Web App Manifest)
 
 ### Ngoài phạm vi (v1.0)
 
@@ -114,12 +114,12 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 
 | ID | Yêu cầu | Ưu tiên |
 |----|---------|---------|
-| F1.1 | Mỗi bàn có một mã QR duy nhất do hệ thống tạo | Bắt buộc |
-| F1.2 | Mã QR mở phiên thực khách giới hạn trong bàn và nhà hàng cụ thể | Bắt buộc |
+| F1.1 | Nhà hàng có một mã QR cấp nhà hàng duy nhất được tạo bởi hệ thống | Bắt buộc |
+| F1.2 | Mã QR mở phiên thực khách giới hạn trong nhà hàng cụ thể; thực khách chọn số bàn khi thanh toán | Bắt buộc |
 | F1.3 | Chủ nhà hàng có thể thêm, đổi tên và vô hiệu hoá bàn | Bắt buộc |
-| F1.4 | Chủ nhà hàng có thể tạo lại mã QR cho bàn (để vô hiệu mã cũ) | Bắt buộc |
-| F1.5 | Mã QR có thể tải về dạng PNG/PDF để in | Nên có |
-| F1.6 | Mã QR chứa token được ký HMAC — không giới hạn thời gian mặc định | Bắt buộc |
+| F1.4 | Chủ nhà hàng có thỉ tạo lại mã QR nhà hàng (để vô hiệu mã cũ) | Bắt buộc |
+| F1.5 | Mã QR có thể tải về dạng PNG để in | Nên có |
+| F1.6 | Mã QR chứa token cấp nhà hàng được ký HMAC — không nhúng thông tin cá nhân | Bắt buộc |
 
 ### F2 — Thực khách xem menu & đặt món
 
@@ -129,12 +129,15 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | F2.2 | Menu hiển thị danh mục, tên món, mô tả, giá và ảnh | Bắt buộc |
 | F2.3 | Thực khách thêm món vào giỏ và điều chỉnh số lượng | Bắt buộc |
 | F2.4 | Thực khách thêm ghi chú tuỳ chỉnh cho từng món (ví dụ: "không hành") | Bắt buộc |
-| F2.5 | Thực khách xem lại giỏ hàng và xác nhận order chỉ một thao tác | Bắt buộc |
-| F2.6 | Thực khách nhận xác nhận ngay trên màn hình cùng mã số đơn hàng | Bắt buộc |
-| F2.7 | Thực khách có thể tiếp tục đặt thêm order trong cùng phiên bàn | Bắt buộc |
-| F2.8 | Món hết hàng được hiển thị nhưng không thể chọn, có nhãn "Hết hàng" | Bắt buộc |
-| F2.9 | Menu hỗ trợ ảnh minh hoạ món (tuỳ chọn theo từng món) | Nên có |
-| F2.10 | Thực khách có thể xem toàn bộ lịch sử order trong phiên hiện tại | Nên có |
+| F2.5 | Thực khách chọn số bàn từ danh sách thả xuống khi thanh toán; bắt buộc trước khi đặt được đơn | Bắt buộc |
+| F2.6 | Thực khách xem lại giỏ hàng và xác nhận order chỉ một thao tác | Bắt buộc |
+| F2.7 | Thực khách nhận xác nhận ngay trên màn hình cùng mã số đơn hàng | Bắt buộc |
+| F2.8 | Thực khách có thể tiếp tục đặt thêm order trong cùng phiên bàn | Bắt buộc |
+| F2.9 | Món hết hàng được hiển thị nhưng không thể chọn, có nhãn “Hết hàng” | Bắt buộc |
+| F2.10 | Menu hỗ trợ ảnh minh hoạ món (tuỳ chọn theo từng món) | Nên có |
+| F2.11 | Thực khách có thể xem toàn bộ lịch sử order trong phiên hiện tại | Nên có |
+| F2.12 | Thực khách chọn tùy chọn bắt buộc trong nhóm modifier trước khi thêm vào giỏ; nút thêm giỏ bị vô hiệu cho đến khi đủ lựa chọn | Bắt buộc |
+| F2.13 | Nhóm modifier tuỳ chọn hiển thị dưới dạng add-on có thể chọn thêm; chênh lệch giá hiển thị theo từng tùy chọn và trong tổng giỏ hàng | Nên có |
 
 ### F3 — Theo dõi đơn hàng thời gian thực
 
@@ -156,7 +159,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | F4.3 | Đồ uống trong đơn tự động in trên **máy in nhiệt quầy bar** | Bắt buộc |
 | F4.4 | Mỗi vé in hiển thị: số bàn, số đơn, danh sách món, số lượng và ghi chú | Bắt buộc |
 | F4.5 | Máy in bếp và quầy bar hoạt động độc lập — đơn chỉ có đồ uống không kích hoạt máy in bếp | Bắt buộc |
-| F4.6 | Một **Phần mềm client in** (.NET 10 Worker Service `.exe`) chạy tại nhà hàng; cấu hình qua `appsettings.json` (`DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`); gửi ePOS-Print XML đến máy in Epson TM-T82III; xác thực bằng `DeviceToken` riêng cho từng nhà hàng | Bắt buộc |
+| F4.6 | Máy in **Star Micronics mC-Print3** sử dụng giao thức **CloudPRNT** — máy in tự polling `GET /api/print/poll?deviceToken=<token>` mỗi 2–3 giây; backend trả về payload Base64 ESC/POS Star khi có job; máy in xác nhận qua `POST /api/print/status/{jobId}`; không cần phần mềm cục bộ | Bắt buộc |
 | F4.7 | Lỗi in (máy in offline) hiện cảnh báo trực quan trên Dashboard nhân viên | Nên có |
 
 ### F5 — Dashboard nhân viên phục vụ
@@ -177,9 +180,10 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | F6.3 | Chủ nhà hàng bật/tắt trạng thái có hàng theo thời gian thực (ví dụ: "hết hàng") | Bắt buộc |
 | F6.4 | Chủ nhà hàng quản lý bàn và tải mã QR | Bắt buộc |
 | F6.5 | Chủ nhà hàng tạo và quản lý PIN nhân viên | Bắt buộc |
-| F6.6 | Chủ nhà hàng xem lịch sử đơn hàng với bộ lọc (khoảng ngày, bàn, trạng thái) | Nên có |
-| F6.7 | Chủ nhà hàng xem tóm tắt doanh thu (theo ngày/tuần) | Nên có |
-| F6.8 | Chủ nhà hàng cấu hình hồ sơ nhà hàng (tên, logo, địa chỉ, giờ mở cửa) | Nên có |
+| F6.6 | Chủ nhà hàng cấu hình hồ sơ nhà hàng (tên, logo, địa chỉ, giờ mở cửa) | Nên có |
+| F6.7 | Chủ nhà hàng đăng ký device token CloudPRNT riêng cho máy in bếp và máy in bar | Bắt buộc |
+| F6.8 | Chủ nhà hàng tạo, sửa và xoá nhóm modifier cho món ăn (tên nhóm, bắt buộc/tuỳ chọn, min/max lựa chọn) | Bắt buộc |
+| F6.9 | Chủ nhà hàng thêm modifier vào nhóm với tên và chênh lệch giá tuỳ chọn (price_delta_eur_cents) | Bắt buộc |
 
 ### F7 — Panel quản trị nền tảng
 
@@ -216,6 +220,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | **Bảo mật** | Tuân thủ OWASP Top 10; toàn bộ dữ liệu qua HTTPS/WSS; không có PII trong token QR |
 | **Tiếp cận** | Tuân thủ WCAG 2.1 AA trên trang menu dành cho thực khách |
 | **Trình duyệt hỗ trợ** | 2 phiên bản mới nhất: Chrome, Safari, Firefox, Edge; iOS Safari 15+; Android Chrome 100+ |
+| **PWA** | Service Worker + Web App Manifest; ứng dụng có thể cài đặt trên iOS Safari 15+ và Android Chrome 100+ |
 | **Lưu giữ dữ liệu** | Lịch sử đơn hàng lưu 24 tháng; sau đó ẩn danh hoá cho mục đích báo cáo |
 | **Audit log** | Ghi lại mọi thay đổi trạng thái, sự kiện xác thực và hành động quản trị |
 
@@ -227,6 +232,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 |------|-----------|
 | Frontend (Tất cả vai trò) | Vue 3 + **Vuetify** — một SPA duy nhất triển khai trên **Vercel** |
 | Backend API | .NET 10 + Clean Architecture (Jason Taylor) — trên Civo VM |
+| Tầng Application | Wolverine (JasperFx) — CQRS Commands/Queries + outbox PostgreSQL bền vững |
 | ORM | EF Core 10 với Npgsql provider |
 | Điều phối Dev | .NET Aspire AppHost + ServiceDefaults (chỉ dùng khi dev) |
 | Hub thời gian thực | ASP.NET Core SignalR (WebSocket) — co-hosted với API trên Civo VM |
@@ -242,13 +248,16 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 ## 9. Mô hình dữ liệu (Tổng quan)
 
 ```
-Restaurant (Nhà hàng, trạng thái chủ: pending|active|suspended)
-  ├── Tables (Bàn: số bàn, qr_token)
+Restaurant (Nhà hàng, trạng thái chủ: pending|active|suspended, qr_token, kitchen_device_token, bar_device_token)
+  ├── Tables (Bàn: số bàn — không có qr_token riêng)
   ├── MenuCategories (Danh mục: tên, thứ tự)
-  │   └── MenuItems (Món: tên, mô tả, giá, ảnh, trạng thái hàng, loại: food|drink)
+  │   └── MenuItems (Món: tên, mô tả, price_eur_cents INT, ảnh, trạng thái hàng, loại: food|drink)
+  │       └── MenuItemModifierGroups (Nhóm tùy chọn: menu_item_id, tên, is_required, min_sel, max_sel)
+  │           └── MenuItemModifiers (Tùy chọn: tên, price_delta_eur_cents INT)
   ├── Staff (Nhân viên: tên, pin_hash, vai trò)
-  └── Orders (Đơn hàng: table_id, session_id, trạng thái, thời gian)
+  └── Orders (Đơn hàng: table_number, session_id, trạng thái, thời gian)
         └── OrderItems (Chi tiết: menu_item_id, số lượng, ghi chú, trạng thái)
+              └── OrderItemModifiers (Tùy chọn đã chọn: modifier_id, name_snapshot, price_delta_cents)
 ```
 
 ---
@@ -259,7 +268,7 @@ Restaurant (Nhà hàng, trạng thái chủ: pending|active|suspended)
 1. Thực khách ngồi vào bàn → quét mã QR
 2. Trình duyệt mở trang menu (không cần cài app, không cần đăng nhập)
 3. Thực khách duyệt danh mục, thêm món, tuỳ chọn ghi chú
-4. Thực khách nhấn "Đặt món" → đơn hàng được gửi đi
+4. Thực khách chọn số bàn từ danh sách thả xuống, xem lại giỏ hàng và nhấn “Đặt món” → đơn hàng được gửi đi
 5. Đồ ăn tự động in trên máy in nhiệt bếp; đồ uống tự động in trên máy in nhiệt quầy bar
 6. Trạng thái đơn tự động chuyển sang "Đang chế biến"
 7. Thực khách thấy ⟳ "Đang chế biến" trên thiết bị của họ
@@ -291,12 +300,12 @@ Restaurant (Nhà hàng, trạng thái chủ: pending|active|suspended)
 
 | # | Câu hỏi | Người phụ trách | Trạng thái |
 |---|---------|-----------------|------------|
-| OQ1 | Tích hợp thanh toán có nằm trong phạm vi v1.1 không? | Khách hàng | Mở |
-| OQ2 | Một loại tiền tệ hay đa tiền tệ? | Khách hàng | Mở |
-| OQ3 | Món ăn có hỗ trợ tùy chọn/biến thể không (ví dụ: cỡ, mức cay)? | Product | Mở |
-| OQ4 | Có cần giao diện PWA (cài ứng dụng từ trình duyệt) không? | Khách hàng | Mở |
-| OQ5 | Đánh giá của thực khách — thu thập theo đơn hay theo lần ghé thăm? | Product | Mở |
-| OQ6 | Có yêu cầu tuân thủ pháp lý nào không (GDPR, PDPA)? | Khách hàng | Mở |
+| OQ1 | Tích hợp thanh toán có nằm trong phạm vi v1.1 không? | Khách hàng | **Đã giải quyết** — Chỉ EUR, thanh toán trực tiếp tại quầy nhà hàng; không tích hợp thanh toán trong v1 |
+| OQ2 | Một loại tiền tệ hay đa tiền tệ? | Khách hàng | **Đã giải quyết** — Chỉ EUR; lưu trữ dưới dạng số nguyên cents (`price_eur_cents INT`) |
+| OQ3 | Món ăn có hỗ trợ tùy chọn/biến thể không (ví dụ: cỡ, mức cay)? | Product | **Đã giải quyết** — Hỗ trợ nhóm modifier trong v1.0 (MenuItemModifierGroup → MenuItemModifier → OrderItemModifier) |
+| OQ4 | Có cần giao diện PWA (cài ứng dụng từ trình duyệt) không? | Khách hàng | **Đã giải quyết** — Có; Service Worker + Web App Manifest; có thể cài trên iOS Safari 15+ và Android Chrome 100+ |
+| OQ5 | Đánh giá của thực khách — thu thập theo đơn hay theo lần ghé thăm? | Product | **Đã giải quyết** — Không thu thập đánh giá trong v1; không lưu thông tin cá nhân của thực khách |
+| OQ6 | Có yêu cầu tuân thủ pháp lý nào không (GDPR, PDPA)? | Khách hàng | **Đã giải quyết** — Tuân thủ GDPR theo thiết kế: không lưu thông tin cá nhân nếu không cần thiết; choạt động ẩn danh hoá sau 24 tháng |
 
 ---
 

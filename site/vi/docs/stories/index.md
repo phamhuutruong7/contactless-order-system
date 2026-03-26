@@ -34,6 +34,7 @@
 | GitHub Actions: workflow deploy-dev | Push lên `dev` → SSH deploy → ứng dụng truy cập được trên Dev VM | 🔲 Kế hoạch |
 | GitHub Actions: workflow deploy-prod | Push lên `main` → blue-green deploy → xác nhận không có downtime | 🔲 Kế hoạch |
 | Thiết lập .NET Aspire AppHost cho dev local | Project AppHost tham chiếu API + local Supabase container; `dotnet run --project AppHost` khởi động toàn bộ dev stack; chỉ dùng khi dev, không có trong production images | 🔲 Kế hoạch |
+| Cài đặt PWA manifest và Service Worker | `/manifest.json` có mặt; Service Worker cache tài nguyên SPA; có thể cài đặt trên iOS Safari 15+ và Android Chrome 100+ | 🔲 Kế hoạch |
 
 ---
 
@@ -63,6 +64,9 @@
 | Bật/tắt trạng thái có hàng theo thời gian thực | Chủ đặt hết hàng → món mờ đi với thực khách trong vòng 5s |
 | Tải ảnh món ăn | Ảnh lưu vào Supabase Storage; phục vụ qua URL CDN |
 | Sắp xếp lại danh mục và món | Kéo thả để sắp xếp; được lưu; phản ánh trong menu thực khách |
+| Tạo nhóm modifier cho món ăn | Chủ nhà hàng tạo nhóm modifier với tên, is_required, min_selections, max_selections; nhóm gắn với một món cụ thể |
+| Thêm modifier vào nhóm | Chủ nhà hàng thêm tùy chọn tên modifier với price_delta_eur_cents tuỳ chọn; delta âm được phép |
+| Sắp xếp lại và xoá nhóm modifier | Nhóm đã xoá không hiển thị với thực khách; sắp xếp được lưu |
 
 ---
 
@@ -73,9 +77,9 @@
 | Story | Tiêu chí chấp nhận |
 |-------|--------------------|
 | Thêm / đổi tên / vô hiệu hoá bàn | Danh sách bàn phản ánh thay đổi ngay lập tức |
-| Tạo mã QR cho bàn | QR mã hoá URL có ký; quét sẽ mở đúng nhà hàng + bàn |
-| Tải mã QR dạng PNG | File tải về có tên bàn trong tên file |
-| Tạo lại mã QR (vô hiệu mã cũ) | Link QR cũ chuyển đến trang "không hợp lệ"; mã mới hoạt động bình thường |
+| Xem và tải mã QR nhà hàng | Mã QR nhà hàng duy nhất được ký HMAC hiển thị trong Owner Dashboard; có thể tải về dạng PNG |
+| Tạo lại mã QR nhà hàng | Mã QR cũ chuyển đến trang “không hợp lệ”; mã mới hoạt động bình thường |
+| Thực khách chọn số bàn khi thanh toán | Thanh toán hiển thị dropdown số bàn; trường bắt buộc trước khi gửi đơn; số bàn lưu vào Order |
 
 ---
 
@@ -88,8 +92,9 @@
 | Thực khách quét QR và thấy menu | Trang tải < 2s trên 4G; không hiện thông báo cài app; menu hiển thị đúng |
 | Thực khách duyệt danh mục và món | Danh mục hiển thị; chi tiết món (tên, mô tả, giá, ảnh) có thể xem |
 | Thực khách thêm món vào giỏ | Giỏ cập nhật; badge hiển thị số lượng món |
-| Thực khách thêm ghi chú vào món | Ghi chú dạng text tự do được lưu cùng dòng order |
-| Thực khách xem lại và xác nhận đơn | Hiện tóm tắt; đơn được gửi khi xác nhận; màn hình xác nhận có số đơn |
+| Thực khách thêm ghi chú vào món | Ghi chú dạng text tự do được lưu cùng dòng order || Thực khách chọn modifier bắt buộc trước khi thêm vào giỏ | Nút “Thêm vào giỏ” bị vô hiệu cho đến khi chọn đủ modifier bắt buộc; vi phạm validation hiển thị lỗi rõ ràng |
+| Thực khách chọn modifier tuỳ chọn | Nhóm modifier tuỳ chọn hiển thị là add-on có thể chọn thêm; chênh lệch giá cập nhật tổng giỏ hàng |
+| Thực khách chọn số bàn khi thanh toán | Dropdown trong luồng thanh toán; bắt buộc; số bàn lưu vào đơn hàng || Thực khách xem lại và xác nhận đơn | Hiện tóm tắt; đơn được gửi khi xác nhận; màn hình xác nhận có số đơn |
 | Thực khách đặt thêm order trong cùng phiên | Các order tiếp theo liên kết với cùng phiên bàn |
 | Món hết hàng hiển thị nhưng không thể đặt | Mờ đi; nhãn "Hết hàng"; nút thêm vào giỏ bị tắt |
 
@@ -118,9 +123,11 @@
 | Đồ ăn tự in lên máy in bếp | Khi đặt đơn, đồ ăn định tuyến đến máy in nhiệt bếp; vé in hiển thị số bàn, số đơn, món, số lượng, ghi chú |
 | Đồ uống tự in lên máy in bar | Khi đặt đơn, đồ uống định tuyến đến máy in nhiệt quầy bar; cùng định dạng vé |
 | Đơn hỗn hợp in trên cả hai máy | Đơn có cả đồ ăn lẫn đồ uống kích hoạt cả hai máy in độc lập |
-| Cài đặt phần mềm client in | File `.exe` tự-chứa cài trên PC địa phương nhà hàng; kết nối đến SignalR hub qua `DeviceToken` trong connection header |
-| Chủ nhà hàng tạo device token | Owner Dashboard tạo `DeviceToken` một lần cho Print Agent; token lưu trong backend và dùng để xác thực agent |
-| Cấu hình agent qua `appsettings.json` | Config agent bao gồm `RestaurantId`, `DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`; IP tĩnh do chủ nhà hàng cấu hình |
+| Chủ nhà hàng đăng ký device token máy in bếp | Owner Dashboard tạo kitchen device token; token lưu trong backend; dùng để máy in bếp xác thực khi polling |
+| Chủ nhà hàng đăng ký device token máy in bar | Tương tự kitchen token nhưng cho bar; token riêng biệt cho phép định tuyến độc lập |
+| Máy in bếp polling CloudPRNT endpoint | Máy in Star mC-Print3 gọi `GET /api/print/poll?deviceToken=<kitchen_token>` mỗi 2–3s; nhận Base64 ESC/POS khi có job |
+| Máy in bar polling CloudPRNT endpoint | Máy in bar gọi `GET /api/print/poll?deviceToken=<bar_token>`; cùng luồng với bếp |
+| Máy in xác nhận hoàn thành job | Sau khi in, máy in gọi `POST /api/print/status/{jobId}` để đánh dấu hoàn thành; không có xác nhận sau 30s thì job được đưa lại hàng chờ |
 | Cảnh báo nhân viên khi lỗi in | Nếu máy in offline, Dashboard nhân viên hiển thị cảnh báo kèm chi tiết đơn bị ảnh hưởng |
 
 ---
@@ -145,8 +152,6 @@
 
 | Story | Tiêu chí chấp nhận |
 |-------|--------------------|
-| Chủ xem tóm tắt đơn hàng trong ngày | Hiển thị số đơn hàng, tổng doanh thu, giá trị đơn trung bình |
-| Chủ lọc lịch sử đơn hàng | Lọc theo khoảng ngày, bàn, trạng thái |
 | Chủ quản lý PIN nhân viên | Có thể tạo, cập nhật, vô hiệu hoá tài khoản nhân viên |
 | Chủ sửa hồ sơ nhà hàng | Tên, logo, địa chỉ, giờ mở cửa được lưu và phản ánh công khai |
 

@@ -22,10 +22,10 @@
                               │  PostgreSQL · GoTrue Auth · S3      │
                               └────────────────────────────────────┘
 ┌───────────────────────────────────────────────────────────┐
-│            MẠNG NỘI BỘ NHÀ HÀNG                           │
-│  Client In ──► Máy in nhiệt bếp  (đồ ăn)                 │
-│             └──► Máy in nhiệt quầy bar (đồ uống)          │
-│  (Subscriber SignalR — nhận sự kiện in từ backend)        │
+│              MÁY IN CLOUDPRNT (polling)                    │
+│  Máy in bếp mC-Print3   ──► gọi GET /api/print/poll      │
+│  Máy in bar mC-Print3   ──► gọi GET /api/print/poll      │
+│  (Máy in tự polling — không cần phần mềm cục bộ)         │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -38,6 +38,7 @@
 | Ứng dụng | Người dùng | Công nghệ |
 |----------|------------|-----------|
 | SPA duy nhất | Tất cả vai trò (Thực khách, Nhân viên, Chủ nhà hàng, Admin) | Vue 3 + Vuetify, định tuyến theo vai trò |
+| Hỗ trợ PWA | Thực khách (chính) | Service Worker (cache tài nguyên SPA, fallback offline) + Web App Manifest; có thể cài đặt trên iOS Safari 15+ và Android Chrome 100+ |
 
 SPA Vuetify duy nhất được triển khai trên **Vercel**. Hiển thị giao diện khác nhau dựa trên vai trò người dùng: thực khách truy cập ẩn danh qua mã QR, nhân viên/chủ nhà hàng/admin xác thực trước khi vào dashboard của họ.
 
@@ -48,8 +49,8 @@ Xây dựng theo [mẫu Clean Architecture của Jason Taylor](https://github.co
 | Tầng | Trách nhiệm |
 |------|-------------|
 | **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
-| **Application** | CQRS Commands/Queries (MediatR), Interfaces, DTOs, FluentValidation |
-| **Infrastructure** | EF Core + Npgsql, triển khai SignalR hub, HTTP adapter ePOS-Print |
+| **Application** | CQRS Commands/Queries (Wolverine), Interfaces, DTOs, FluentValidation, outbox PostgreSQL bền vững |
+| **Infrastructure** | EF Core + Npgsql, triển khai SignalR hub, controller polling CloudPRNT |
 | **Api** | ASP.NET Core Web API — controllers hoặc minimal endpoints; JWT middleware |
 
 - Xác thực JWT trên tất cả route được bảo vệ (token phát hành bởi Supabase)
@@ -131,53 +132,32 @@ var api = builder.AddProject<Projects.Api>("api")
 
 ## Kiến trúc in vé nhiệt
 
-Khi đơn hàng được xác nhận, backend phân loại món theo `item_type` và gửi sự kiện SignalR đến nhóm theo nhà hàng:
-- Đồ ăn → `KitchenPrintEvent` → nhóm `restaurant-{restaurantId}-kitchen`
-- Đồ uống → `BarPrintEvent` → nhóm `restaurant-{restaurantId}-bar`
+Máy in Star Micronics mC-Print3 sử dụng giao thức **CloudPRNT** — máy in tự chủ động polling backend, không cần phần mềm cục bộ.
 
-### Phần mềm client in (.NET 10 Worker Service)
+### Luồng hoạt động
 
-Mỗi nhà hàng có một **phần mềm client in** chạy tại chỗ. Agent đăng ký **cả hai** nhóm SignalR và định tuyến nội bộ theo loại sự kiện.
-
-```
-SignalR Hub (Civo VM)
-  └─► Print Client Agent (PC nội bộ nhà hàng — .NET 10 Worker Service .exe)
-        ├── Epson TM-T82III — Máy in bếp (HTTP POST qua ePOS-Print XML)
-        └── Epson TM-T82III — Máy in bar  (HTTP POST qua ePOS-Print XML)
-```
-
-In được gửi qua **ePOS-Print XML** over HTTP đến IP nội bộ của từng máy in:
+1. Khi đơn hàng được xác nhận, backend tạo job in trong outbox PostgreSQL bền vững (Wolverine) và phân theo `item_type`:
+   - Đồ ăn → job gắn với device token máy in bếp
+   - Đồ uống → job gắn với device token máy in bar
+2. Máy in mC-Print3 **tự polling** `GET /api/print/poll?deviceToken=<token>` mỗi 2–3 giây.
+3. Backend trả về payload Base64 ESC/POS chuẩn Star khi có job đang chờ.
+4. Máy in xác nhận `POST /api/print/status/{jobId}` sau khi in xong.
 
 ```
-POST http://{printerIp}/cgi-bin/epos/service.cgi
-Content-Type: text/xml; charset=utf-8
-SOAPAction: "http://www.epson-pos.com/schemas/2011/03/epos-print"
-```
-
-Cấu hình agent (`appsettings.json`):
-
-```json
-{
-  "PrintAgent": {
-    "BackendUrl": "https://api.example.com",
-    "RestaurantId": "<uuid>",
-    "DeviceToken": "<token-do-chủ-nhà-hàng-tạo>",
-    "KitchenPrinterIp": "192.168.1.101",
-    "BarPrinterIp": "192.168.1.102"
-  }
-}
+Backend (Civo VM)
+  ├─► GET /api/print/poll?deviceToken=<kitchen-token>  ◄── Máy in bếp mC-Print3 (tự polling)
+  └─► GET /api/print/poll?deviceToken=<bar-token>     ◄── Máy in bar mC-Print3  (tự polling)
 ```
 
 | Vấn đề | Cách xử lý |
 |--------|------------|
-| Model máy in | Epson TM-T82III |
-| Giao thức in | ePOS-Print XML over HTTP (độc quyền Epson) |
-| Định tuyến | Một agent mỗi nhà hàng; định tuyến theo loại sự kiện đến đúng IP máy in |
-| Xác thực | `DeviceToken` trong header kết nối SignalR, được chủ nhà hàng tạo trong Owner Dashboard |
-| Xử lý lỗi | Fire-and-forget — lỗi in kích hoạt sự kiện `PrintFailed` → cảnh báo trên Staff Dashboard |
-| Cấu hình IP | IP tĩnh trong `appsettings.json` (cấu hình local, không lưu trong backend) |
-| Xử lý lỗi | Máy in offline kích hoạt sự kiện `PrintFailed` → cảnh báo trên Dashboard nhân viên |
+| Model máy in | Star Micronics mC-Print3 |
+| Giao thức in | CloudPRNT (máy in tự polling HTTP — không cần phần mềm cục bộ) |
+| Định tuyến | Hai device token riêng biệt — kitchen token và bar token; đăng ký trong Owner Dashboard |
+| Xác thực | `deviceToken` trên query string `GET /api/print/poll`; được tạo và quản lý trong Owner Dashboard |
+| Xử lý lỗi | Job không được nhận trong thời gian chờ → cảnh báo trên Staff Dashboard kèm chi tiết đơn hàng |
 | Nội dung vé | Số bàn, số đơn, món + số lượng + ghi chú, thời gian |
+| Chi phí đầu tư | ~€400–600/máy |
 
 ---
 
@@ -188,7 +168,7 @@ Cấu hình agent (`appsettings.json`):
 | Mã hoá truyền dữ liệu | TLS 1.2+ qua Nginx |
 | Token xác thực | Supabase JWT (RS256, hết hạn sau 1h) |
 | Cô lập đa tenant | Chính sách RLS Supabase theo `restaurant_id` |
-| Bảo mật token QR | Token bàn ký HMAC — không nhúng PII |
+| Bảo mật token QR | Token cấp nhà hàng ký HMAC — không chứa thông tin cá nhân; số bàn được khách chọn khi thanh toán |
 | Lưu PIN nhân viên | Băm bcrypt, không lưu dạng plaintext |
 | CORS | API giới hạn domain triển khai Vercel và preview URL |
 | Giới hạn tốc độ | Nginx + middleware rate limiter ASP.NET Core |

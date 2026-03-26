@@ -34,6 +34,7 @@
 | GitHub Actions: deploy-dev workflow | Push to `dev` → SSH deploy → app accessible on dev VM | 🔲 Planned |
 | GitHub Actions: deploy-prod workflow | Push to `main` → blue-green deploy → zero-downtime confirmed | 🔲 Planned |
 | Set up .NET Aspire AppHost for local dev | AppHost project references API + local Supabase container; `dotnet run --project AppHost` starts full dev stack; dev-only, not present in production images | 🔲 Planned |
+| PWA manifest and Service Worker in place | `/manifest.json` present with name, icons, theme_color; Service Worker caches SPA assets and returns offline fallback; app is installable on iOS Safari 15+ and Android Chrome 100+ | 🔲 Planned |
 
 ---
 
@@ -63,6 +64,9 @@
 | Toggle item availability in real time | Owner sets unavailable → item greys out for guests within 5s |
 | Upload item photo | Photo stored in Supabase Storage; served via CDN URL |
 | Reorder categories and items | Drag-and-drop reorder; persisted; reflected in guest menu |
+| Create modifier group for a menu item | Group has name, is_required flag, min_selections, max_selections; appears in item editor |
+| Add modifiers to a group | Each modifier has a name and optional price_delta_eur_cents; modifier list visible when guest adds item to cart |
+| Reorder and delete modifier groups | Changes persisted; reflected immediately in guest menu |
 
 ---
 
@@ -73,9 +77,9 @@
 | Story | Acceptance Criteria |
 |-------|---------------------|
 | Add / rename / deactivate tables | Table list reflects changes immediately |
-| Generate QR code for a table | QR encodes signed URL; scanning opens correct restaurant + table |
-| Download QR code as PNG | File downloads with table name in filename |
-| Regenerate QR code (invalidate old) | Old QR link redirects to "invalid" page; new code works |
+| View and download restaurant QR code | Single restaurant QR displayed in Owner Dashboard; downloadable as PNG |
+| Regenerate restaurant QR code | Old QR link shows "invalid" message; new code works; owner confirms action before regenerating |
+| Guest selects table number at checkout | After scanning QR, guest picks their table number from a dropdown before confirming order; table number is saved with the order |
 
 ---
 
@@ -89,6 +93,9 @@
 | Guest browses categories and items | Categories shown; item detail (name, description, price, photo) visible |
 | Guest adds items to cart | Cart updates; badge shows item count |
 | Guest adds note to item | Free-text note saved with order line |
+| Guest selects required modifiers before adding to cart | Required modifier groups show validation; add-to-cart button disabled until all required groups have a selection |
+| Guest selects optional modifiers | Optional modifier groups shown as selectable add-ons; price delta displayed per option and reflected in total |
+| Guest selects table number at checkout | Dropdown lists the restaurant's tables; selection is required before order can be confirmed |
 | Guest reviews and confirms order | Summary shown; order submitted on confirm; confirmation screen with order # |
 | Guest places additional order in same session | Subsequent orders linked to same table session |
 | Unavailable items shown but unorderable | Greyed out; "Unavailable" label; add-to-cart button disabled |
@@ -118,10 +125,11 @@
 | Food items auto-print to kitchen printer | On order submit, food items routed to kitchen thermal printer; ticket shows table #, order #, items, quantities, notes |
 | Drink items auto-print to bar printer | On order submit, drink items routed to bar thermal printer; same ticket format |
 | Mixed orders print to both printers | An order with both food and drink triggers both printers independently |
-| Print client agent setup | Self-contained `.exe` installed on restaurant local PC; connects to SignalR hub using `DeviceToken` in the connection header |
-| Owner generates device token | Owner Dashboard generates a one-time `DeviceToken` for the Print Agent; token stored in backend and used for agent authentication |
-| Configure agent via `appsettings.json` | Agent config includes `RestaurantId`, `DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`; static IPs set by restaurant owner |
-| Staff alerted on print failure | If printer is offline, Staff Dashboard shows a banner alert with the affected order details |
+| Owner registers kitchen printer device token | Owner enters device token for kitchen Star mC-Print3 in Owner Dashboard; token stored and used for CloudPRNT polling authentication |
+| Owner registers bar printer device token | Owner enters device token for bar Star mC-Print3 independently; can be updated or rotated without affecting kitchen token |
+| Kitchen printer polls and prints | Kitchen mC-Print3 polls `GET /api/print/poll?deviceToken=<token>` every 2–3 s; backend responds with Base64 Star ESC/POS payload when a food job is pending; printer confirms with `POST /api/print/status/{jobId}` |
+| Bar printer polls and prints | Bar mC-Print3 polls independently; receives drink jobs via same CloudPRNT protocol |
+| Staff alerted on print failure | If a job is not consumed within the timeout threshold, Staff Dashboard shows a banner alert with the affected order details |
 
 ---
 
@@ -145,8 +153,6 @@
 
 | Story | Acceptance Criteria |
 |-------|---------------------|
-| Owner sees today's order summary | Count of orders, total revenue, avg order value shown |
-| Owner filters order history | Filter by date range, table, status |
 | Owner manages staff PINs | Can create, update, deactivate staff accounts |
 | Owner edits restaurant profile | Name, logo, address, opening hours saved and reflected publicly |
 
