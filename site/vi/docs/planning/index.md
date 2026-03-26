@@ -45,7 +45,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 - Tạo mã QR riêng cho từng bàn
 - Thực khách xem menu kỹ thuật số và đặt món
 - Theo dõi trạng thái đơn hàng thời gian thực (thực khách + bếp + nhân viên)
-- Màn hình hiển thị bếp (Kitchen Display System)
+- Hệ thống in vé nhiệt (máy in bếp + máy in quầy bar)
 - Dashboard quản lý của nhân viên phục vụ
 - Dashboard chủ nhà hàng: quản lý menu & bàn ăn
 - Panel quản trị nền tảng đa nhà hàng
@@ -89,7 +89,8 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 
 > Chủ sở hữu hoặc quản lý của một nhà hàng cụ thể.
 
-- Tài khoản đầy đủ với đăng nhập email/mật khẩu
+- Tài khoản đầy đủ với đăng nhập qua **Google OAuth** — không cần thiết lập mật khẩu
+- Tài khoản bắt đầu ở trạng thái **Chờ phê duyệt**; phải được PlatformAdmin kích hoạt sau khi xác nhận thanh toán phí sử dụng nền tảng
 - Quản lý thực đơn kỹ thuật số (thêm/sửa/ẩn món, cập nhật trạng thái có hàng/hết hàng)
 - Quản lý bàn ăn (thêm/xoá, tạo/làm mới mã QR)
 - Xem lịch sử đơn hàng, báo cáo doanh thu và phản hồi thực khách
@@ -102,6 +103,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 - Tạo và quản lý tenant nhà hàng
 - Xem số liệu tổng hợp và trạng thái sức khoẻ hệ thống
 - Tạm dừng hoặc vô hiệu hoá nhà hàng
+- Xem xét và **phê duyệt** đăng ký của chủ nhà hàng mới sau khi xác nhận thanh toán phí
 - Quản lý cấu hình toàn nền tảng
 
 ---
@@ -138,28 +140,31 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 
 | ID | Yêu cầu | Ưu tiên |
 |----|---------|---------|
-| F3.1 | Đơn hàng được đẩy tức thì tới màn hình bếp qua SignalR | Bắt buộc |
-| F3.2 | Nhân viên bếp cập nhật trạng thái: Tiếp nhận → Đang chế biến → Sẵn sàng | Bắt buộc |
+| F3.1 | Đơn hàng mới kích hoạt sự kiện in qua SignalR — món ăn định tuyến đến máy in bếp, đồ uống đến máy in quầy bar | Bắt buộc |
+| F3.2 | Trạng thái đơn hàng tự động chuyển sang "Đang chế biến" khi vé in được gửi đi | Bắt buộc |
 | F3.3 | Thực khách thấy cập nhật trạng thái trực tiếp không cần tải lại trang | Bắt buộc |
 | F3.4 | Thay đổi trạng thái kích hoạt thông báo trên màn hình thực khách | Nên có |
 | F3.5 | Dashboard nhân viên hiển thị tất cả đơn hoạt động, sắp xếp theo thời gian | Bắt buộc |
 | F3.6 | Hệ thống cảnh báo nếu đơn ở trạng thái "Tiếp nhận" quá 5 phút (tuỳ chỉnh) | Có thể có |
 
-### F4 — Màn hình bếp (KDS)
+### F4 — Hệ thống in vé nhiệt
 
 | ID | Yêu cầu | Ưu tiên |
-|----|---------|---------|
-| F4.1 | Giao diện bếp chuyên dụng hiển thị đơn vào với số bàn và chi tiết món | Bắt buộc |
-| F4.2 | Nhân viên bếp có thể đánh dấu từng món hoặc toàn bộ đơn là sẵn sàng | Bắt buộc |
-| F4.3 | Đơn hiển thị theo thứ tự cũ nhất lên đầu; đơn hoàn thành được ẩn/lưu trữ | Bắt buộc |
-| F4.4 | Cảnh báo âm thanh hoặc hình ảnh khi có đơn mới | Nên có |
+|----|---------|------|
+| F4.1 | Mỗi món ăn được gắn nhãn **đồ ăn** hoặc **đồ uống** để xác định máy in đích | Bắt buộc |
+| F4.2 | Đồ ăn trong đơn tự động in trên **máy in nhiệt bếp** | Bắt buộc |
+| F4.3 | Đồ uống trong đơn tự động in trên **máy in nhiệt quầy bar** | Bắt buộc |
+| F4.4 | Mỗi vé in hiển thị: số bàn, số đơn, danh sách món, số lượng và ghi chú | Bắt buộc |
+| F4.5 | Máy in bếp và quầy bar hoạt động độc lập — đơn chỉ có đồ uống không kích hoạt máy in bếp | Bắt buộc |
+| F4.6 | Một **phần mềm client in** nhẹ chạy tại nhà hàng, lắng nghe sự kiện in qua SignalR | Bắt buộc |
+| F4.7 | Lỗi in (máy in offline) hiện cảnh báo trực quan trên Dashboard nhân viên | Nên có |
 
 ### F5 — Dashboard nhân viên phục vụ
 
 | ID | Yêu cầu | Ưu tiên |
 |----|---------|---------|
 | F5.1 | Nhân viên xem tất cả bàn và trạng thái (trống / có khách / cần chú ý) | Bắt buộc |
-| F5.2 | Nhân viên đánh dấu bàn đã phục vụ (đóng phiên / reset bàn) | Bắt buộc |
+| F5.2 | Nhân viên có thể đóng phiên bàn và reset bàn sau khi thực khách đã thanh toán tại quầy nhà hàng | Bắt buộc |
 | F5.3 | Nhân viên có thể xem và huỷ đơn hàng | Bắt buộc |
 | F5.4 | Nhân viên đăng nhập bằng PIN 4–6 chữ số (không cần email) | Bắt buộc |
 
@@ -184,17 +189,20 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | F7.2 | Quản trị viên xem tất cả tenant và trạng thái hoạt động | Bắt buộc |
 | F7.3 | Quản trị viên tạm dừng / khôi phục tenant | Bắt buộc |
 | F7.4 | Quản trị viên xem số liệu lượng đơn hàng tổng hợp | Có thể có |
+| F7.5 | Quản trị viên xem xét đăng ký chờ phê duyệt của chủ nhà hàng và phê duyệt hoặc từ chối | Bắt buộc |
+| F7.6 | Phê duyệt kích hoạt tài khoản chủ nhà hàng; từ chối gửi email thông báo | Bắt buộc |
 
 ### F8 — Xác thực & Phân quyền
 
 | ID | Yêu cầu | Ưu tiên |
 |----|---------|---------|
-| F8.1 | Chủ nhà hàng và quản trị viên xác thực qua Supabase Auth (email + mật khẩu + JWT) | Bắt buộc |
+| F8.1 | Chủ nhà hàng đăng nhập qua **Google OAuth** (Supabase Auth social login); tài khoản mới bắt đầu ở trạng thái "Chờ phê duyệt" | Bắt buộc |
 | F8.2 | Nhân viên xác thực qua PIN giới hạn trong từng nhà hàng (không cần email) | Bắt buộc |
 | F8.3 | Phiên thực khách là ẩn danh và giới hạn trong bàn + nhà hàng | Bắt buộc |
 | F8.4 | Row-Level Security (RLS) trong Supabase — tenant không thể đọc dữ liệu nhau | Bắt buộc |
 | F8.5 | API kiểm tra JWT/session trên mọi request | Bắt buộc |
 | F8.6 | Phân cấp quyền: Quản trị viên > Chủ nhà hàng > Nhân viên > Thực khách | Bắt buộc |
+| F8.7 | Chủ nhà hàng không thể truy cập bất kỳ tính năng nào của nền tảng cho đến khi PlatformAdmin phê duyệt tài khoản | Bắt buộc |
 
 ---
 
@@ -217,14 +225,14 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 
 | Tầng | Công nghệ |
 |------|-----------|
-| Frontend (Thực khách + Nhân viên + Chủ nhà hàng) | Vue 3 + Vite / hoặc React 18 + Vite |
-| Backend API | .NET 8 Minimal API (ASP.NET Core) |
-| Hub thời gian thực | ASP.NET Core SignalR (WebSocket) |
-| Xác thực & Cơ sở dữ liệu | Supabase (PostgreSQL + GoTrue Auth) |
+| Frontend (Tất cả vai trò) | Vue 3 + **Vuetify** — một SPA duy nhất triển khai trên **Vercel** |
+| Backend API | .NET 8 Minimal API (ASP.NET Core) — trên Civo VM |
+| Hub thời gian thực | ASP.NET Core SignalR (WebSocket) — co-hosted với API trên Civo VM |
+| Xác thực & Cơ sở dữ liệu | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |
 | Lưu trữ tệp | Supabase Storage (ảnh món ăn) |
-| Hạ tầng | Civo Compute VM |
-| Triển khai | Docker Compose, blue-green switch qua Nginx upstream |
-| CI/CD | GitHub Actions → SSH deploy lên Civo |
+| Hạ tầng | Civo Compute VM (backend) + Vercel (CDN frontend) |
+| Triển khai | Docker Compose blue-green (backend trên Civo); Vercel Git integration (frontend) |
+| CI/CD | GitHub Actions → SSH deploy lên Civo (backend); Vercel auto-deploy khi push (frontend) |
 | Tài liệu | VitePress (trang web này) |
 
 ---
@@ -232,10 +240,10 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 ## 9. Mô hình dữ liệu (Tổng quan)
 
 ```
-Restaurant (Nhà hàng)
+Restaurant (Nhà hàng, trạng thái chủ: pending|active|suspended)
   ├── Tables (Bàn: số bàn, qr_token)
   ├── MenuCategories (Danh mục: tên, thứ tự)
-  │   └── MenuItems (Món: tên, mô tả, giá, ảnh, trạng thái hàng)
+  │   └── MenuItems (Món: tên, mô tả, giá, ảnh, trạng thái hàng, loại: food|drink)
   ├── Staff (Nhân viên: tên, pin_hash, vai trò)
   └── Orders (Đơn hàng: table_id, session_id, trạng thái, thời gian)
         └── OrderItems (Chi tiết: menu_item_id, số lượng, ghi chú, trạng thái)
@@ -250,14 +258,14 @@ Restaurant (Nhà hàng)
 2. Trình duyệt mở trang menu (không cần cài app, không cần đăng nhập)
 3. Thực khách duyệt danh mục, thêm món, tuỳ chọn ghi chú
 4. Thực khách nhấn "Đặt món" → đơn hàng được gửi đi
-5. Bếp nhận đơn tức thì (qua SignalR)
-6. Bếp cập nhật trạng thái sang "Đang chế biến"
-7. Thực khách thấy ⟳ "Đang chế biến" trên màn hình của họ
-8. Bếp đánh dấu đơn "Sẵn sàng"
-9. Nhân viên thấy thông báo → mang món ra → đánh dấu "Đã phục vụ"
+5. Đồ ăn tự động in trên máy in nhiệt bếp; đồ uống tự động in trên máy in nhiệt quầy bar
+6. Trạng thái đơn tự động chuyển sang "Đang chế biến"
+7. Thực khách thấy ⟳ "Đang chế biến" trên thiết bị của họ
+8. Nhân viên bếp / quầy bar chuẩn bị món từ vé in — không cần tương tác màn hình
+9. Nhân viên mang đồ ăn và đồ uống ra bàn → đánh dấu "Đã phục vụ" trong Dashboard
 10. Thực khách thấy ✓ "Đơn hàng hoàn thành"
 11. Thực khách có thể đặt thêm món (lặp lại từ bước 3)
-12. Nhân viên đóng phiên bàn khi thực khách rời đi
+12. Thực khách thanh toán tại quầy nhà hàng → Nhân viên đóng phiên bàn
 ```
 
 ---

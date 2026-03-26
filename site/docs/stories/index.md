@@ -14,7 +14,7 @@
 | E4 | Table & QR Code Management | 🔲 Planned |
 | E5 | Guest Ordering Flow | 🔲 Planned |
 | E6 | Real-Time Order Tracking | 🔲 Planned |
-| E7 | Kitchen Display System | 🔲 Planned |
+| E7 | Thermal Print System | 🔲 Planned |
 | E8 | Staff Dashboard | 🔲 Planned |
 | E9 | Owner Dashboard & Reporting | 🔲 Planned |
 | E10 | Platform Admin Panel | 🔲 Planned |
@@ -42,7 +42,8 @@
 
 | Story | Acceptance Criteria |
 |-------|---------------------|
-| Owner can register and log in (email + password) | Supabase Auth creates account; JWT returned; RLS policies active |
+| Owner signs up via Google OAuth | Supabase social login; account created with status "Pending Approval"; cannot access platform until approved |
+| PlatformAdmin approves owner account | Admin approves after fee payment confirmation; owner status changes to "Active" |
 | Staff can log in with PIN | PIN validated against bcrypt hash; scoped JWT issued; expires in 8h |
 | Guest session created on QR scan | Anonymous session scoped to `restaurant_id` + `table_id`; no PII stored |
 | Tenant data isolation enforced | Owner A cannot read Restaurant B's data — verified by integration test |
@@ -106,16 +107,18 @@
 
 ---
 
-## E7 — Kitchen Display System
+## E7 — Thermal Print System
 
-**As a** kitchen staff member, **I want** a clear display of incoming orders **so that** I can prepare them in order.
+**As a** kitchen or bar staff member, **I want** orders to print automatically on my thermal printer **so that** I can prepare items without needing to watch a screen.
 
 | Story | Acceptance Criteria |
 |-------|---------------------|
-| Kitchen view shows all active orders | Orders sorted oldest-first; table number + items visible |
-| New order triggers alert | Visual flash / audio ping on order arrival |
-| Kitchen can mark order ready | Status updated; order moves to "Done" column |
-| Completed orders auto-archived | Done orders disappear from active view after 2 minutes |
+| Menu items tagged as food or drink | Owner sets `item_type` (food/drink) per menu item; required field |
+| Food items auto-print to kitchen printer | On order submit, food items routed to kitchen thermal printer; ticket shows table #, order #, items, quantities, notes |
+| Drink items auto-print to bar printer | On order submit, drink items routed to bar thermal printer; same ticket format |
+| Mixed orders print to both printers | An order with both food and drink triggers both printers independently |
+| Print client agent setup | Agent installed on restaurant local PC; authenticates to SignalR hub using restaurant credentials |
+| Staff alerted on print failure | If printer is offline, Staff Dashboard shows a banner alert with the affected order details |
 
 ---
 
@@ -128,7 +131,7 @@
 | Staff logs in with PIN | PIN validated; staff scoped to their restaurant |
 | Floor view shows all tables | Each table shows: free / occupied / has-ready-order |
 | Staff can view orders per table | Full order list for a table; item status visible |
-| Staff marks table as served / closed | Session closed; table returns to "free" status |
+| Staff closes table after guest payment | After guest pays at the counter, staff closes session; table status returns to "free" |
 | Staff can cancel an order | Order status set to "Cancelled"; guest notified via SignalR |
 
 ---
@@ -153,7 +156,9 @@
 | Story | Acceptance Criteria |
 |-------|---------------------|
 | Admin creates restaurant tenant | Restaurant record created; owner account email invitation sent |
-| Admin views all tenants | Table shows restaurant name, owner, status, order count |
+| Admin views all tenants | Table shows restaurant name, owner email, status (pending/active/suspended), order count |
+| Admin reviews pending registrations | List of owners with "Pending Approval" status; Google account info shown; approve/reject actions available |
+| Admin approves restaurant owner | Owner status set to "Active"; owner receives notification and can access dashboard |
 | Admin suspends / reactivates restaurant | Suspended restaurant shows maintenance page to guests |
 
 ---

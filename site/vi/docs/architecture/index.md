@@ -7,25 +7,26 @@
 ## Tổng quan thành phần
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     THIẾT BỊ THỰC KHÁCH                     │
-│        Trình duyệt (không cài app) — quét mã QR             │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTPS
-┌────────────────────────▼────────────────────────────────────┐
-│                  NGINX (reverse proxy)                       │
-│            Kết thúc TLS · Cache tài nguyên tĩnh             │
-└──────┬────────────────────────────────────────┬─────────────┘
-       │ /api/*                                  │ /hub/*
-┌──────▼──────────────┐              ┌──────────▼──────────────┐
-│   .NET 8 REST API   │              │  ASP.NET Core SignalR   │
-│   (Minimal API)     │              │  WebSocket Hub          │
-└──────┬──────────────┘              └──────────┬──────────────┘
-       │                                         │
-┌──────▼─────────────────────────────────────────▼─────────────┐
-│                        SUPABASE                               │
-│   PostgreSQL (RLS) · GoTrue Auth · File Storage               │
-└───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                     THIẾT BỊ THỰC KHÁCH                   │
+│       Trình duyệt (không cài app) — quét mã QR           │
+└──────────────┬────────────────────────┬───────────────────┘
+               │ Tài nguyên SPA             │ API / WebSocket
+      ┌────────▼──────────┐    ┌────────▼──────────────────────────┐
+      │    VERCEL CDN      │    │       CIVO COMPUTE VM              │
+      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 8 · SignalR    │
+      └────────────────────┘    └────────┬───────────────────────────┘
+                                          │
+                              ┌───────────▼────────────────────────┐
+                              │           SUPABASE                  │
+                              │  PostgreSQL · GoTrue Auth · S3      │
+                              └────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│            MẠNG NỘI BỘ NHÀ HÀNG                           │
+│  Client In ──► Máy in nhiệt bếp  (đồ ăn)                 │
+│             └──► Máy in nhiệt quầy bar (đồ uống)          │
+│  (Subscriber SignalR — nhận sự kiện in từ backend)        │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -36,12 +37,9 @@
 
 | Ứng dụng | Người dùng | Công nghệ |
 |----------|------------|-----------|
-| Menu thực khách | Thực khách (ẩn danh) | Vue 3 + Vite, ưu tiên mobile |
-| Dashboard nhân viên | Nhân viên phục vụ (xác thực PIN) | Vue 3 + Vite |
-| Dashboard chủ nhà hàng | Chủ/Quản lý nhà hàng | Vue 3 + Vite |
-| Admin Panel | Vận hành nền tảng | Vue 3 + Vite |
+| SPA duy nhất | Tất cả vai trò (Thực khách, Nhân viên, Chủ nhà hàng, Admin) | Vue 3 + Vuetify, định tuyến theo vai trò |
 
-Cả bốn ứng dụng được build thành các bundle SPA riêng biệt bằng Vite và phục vụ qua Nginx.
+SPA Vuetify duy nhất được triển khai trên **Vercel**. Hiển thị giao diện khác nhau dựa trên vai trò người dùng: thực khách truy cập ẩn danh qua mã QR, nhân viên/chủ nhà hàng/admin xác thực trước khi vào dashboard của họ.
 
 ### Backend API (.NET 8)
 
@@ -98,10 +96,33 @@ Nginx upstream
 
 ```yaml
 services:
-  api:    # .NET 8 API
-  web:    # Vue 3 frontend (Nginx static)
-  hub:    # SignalR hub (hoặc chạy cùng api)
+  api:    # .NET 8 API + SignalR Hub (co-hosted)
+  # Frontend được triển khai trên Vercel — không nằm trong Docker Compose này
 ```
+
+---
+
+## Kiến trúc in vé nhiệt
+
+Đơn hàng được phân tích loại món trước khi lưu, sau đó một `PrintEvent` được gửi qua SignalR:
+- Món gắn nhãn **đồ ăn** → `PrintEvent` đến nhóm SignalR `kitchen`
+- Món gắn nhãn **đồ uống** → `PrintEvent` đến nhóm SignalR `bar`
+
+Một **phần mềm client in** (daemon nhẹ) chạy tại chỗ ở mỗi nhà hàng:
+
+```
+SignalR Hub (Civo VM)
+  └─► Print Client Agent (PC nội bộ nhà hàng)
+        ├── Máy in nhiệt bếp — đồ ăn (ESC/POS qua USB/LAN)
+        └── Máy in nhiệt quầy bar — đồ uống (ESC/POS qua USB/LAN)
+```
+
+| Vấn đề | Cách xử lý |
+|--------|------------|
+| Giao thức máy in | ESC/POS (chuẩn công nghiệp cho máy in nhiệt) |
+| Phân tách | Mỗi máy in đăng ký nhóm SignalR riêng (`kitchen` vs `bar`) |
+| Xử lý lỗi | Máy in offline kích hoạt sự kiện `PrintFailed` → cảnh báo trên Dashboard nhân viên |
+| Nội dung vé | Số bàn, số đơn, món + số lượng + ghi chú, thời gian |
 
 ---
 
@@ -114,7 +135,7 @@ services:
 | Cô lập đa tenant | Chính sách RLS Supabase theo `restaurant_id` |
 | Bảo mật token QR | Token bàn ký HMAC — không nhúng PII |
 | Lưu PIN nhân viên | Băm bcrypt, không lưu dạng plaintext |
-| CORS | API giới hạn các domain frontend đã biết |
+| CORS | API giới hạn domain triển khai Vercel và preview URL |
 | Giới hạn tốc độ | Nginx + middleware rate limiter ASP.NET Core |
 | Bí mật | Chỉ dùng biến môi trường — không hardcode credential |
 

@@ -14,7 +14,7 @@
 | E4 | Quản lý bàn & Mã QR | 🔲 Kế hoạch |
 | E5 | Luồng đặt món của thực khách | 🔲 Kế hoạch |
 | E6 | Theo dõi đơn hàng thời gian thực | 🔲 Kế hoạch |
-| E7 | Màn hình hiển thị bếp (KDS) | 🔲 Kế hoạch |
+| E7 | Hệ thống in vé nhiệt | 🔲 Kế hoạch |
 | E8 | Dashboard nhân viên phục vụ | 🔲 Kế hoạch |
 | E9 | Dashboard chủ nhà hàng & Báo cáo | 🔲 Kế hoạch |
 | E10 | Panel quản trị nền tảng | 🔲 Kế hoạch |
@@ -42,7 +42,8 @@
 
 | Story | Tiêu chí chấp nhận |
 |-------|--------------------|
-| Chủ nhà hàng đăng ký và đăng nhập (email + mật khẩu) | Supabase Auth tạo tài khoản; JWT được trả về; RLS policies hoạt động |
+| Chủ nhà hàng đăng ký qua Google OAuth | Supabase social login; tài khoản tạo với trạng thái "Chờ phê duyệt"; không thể truy cập nền tảng cho đến khi được phê duyệt |
+| PlatformAdmin phê duyệt tài khoản chủ nhà hàng | Admin phê duyệt sau khi xác nhận thanh toán phí; trạng thái chủ chuyển sang "Hoạt động" |
 | Nhân viên đăng nhập bằng PIN | PIN xác thực qua bcrypt hash; JWT ngắn hạn được phát hành; hết hạn sau 8h |
 | Phiên thực khách được tạo khi quét QR | Phiên ẩn danh giới hạn trong `restaurant_id` + `table_id`; không lưu PII |
 | Đảm bảo cô lập dữ liệu tenant | Chủ nhà hàng A không đọc được dữ liệu Nhà hàng B — xác minh bằng integration test |
@@ -106,16 +107,18 @@
 
 ---
 
-## E7 — Màn hình hiển thị bếp (KDS)
+## E7 — Hệ thống in vé nhiệt
 
-**Với vai trò** nhân viên bếp, **tôi muốn** có màn hình hiển thị rõ ràng các đơn hàng vào **để** tôi có thể chuẩn bị theo thứ tự.
+**Với vai trò** nhân viên bếp hoặc quầy bar, **tôi muốn** đơn hàng tự động in ra máy in nhiệt của tôi **để** tôi có thể chuẩn bị món mà không cần nhìn vào màn hình.
 
 | Story | Tiêu chí chấp nhận |
-|-------|--------------------|
-| Màn hình bếp hiển thị tất cả đơn đang hoạt động | Đơn sắp xếp theo thứ tự cũ nhất lên trên; số bàn + món hiển thị |
-| Đơn mới kích hoạt cảnh báo | Flash hình ảnh / tiếng ping âm thanh khi có đơn mới |
-| Bếp có thể đánh dấu đơn sẵn sàng | Trạng thái cập nhật; đơn chuyển sang cột "Xong" |
-| Đơn hoàn thành tự lưu trữ | Đơn đã xong biến mất khỏi màn hình hoạt động sau 2 phút |
+|-------|-----------------|
+| Gắn nhãn loại món ăn | Chủ nhà hàng có thể đặt item_type (food/drink) cho từng món; trường bắt buộc |
+| Đồ ăn tự in lên máy in bếp | Khi đặt đơn, đồ ăn định tuyến đến máy in nhiệt bếp; vé in hiển thị số bàn, số đơn, món, số lượng, ghi chú |
+| Đồ uống tự in lên máy in bar | Khi đặt đơn, đồ uống định tuyến đến máy in nhiệt quầy bar; cùng định dạng vé |
+| Đơn hỗn hợp in trên cả hai máy | Đơn có cả đồ ăn lẫn đồ uống kích hoạt cả hai máy in độc lập |
+| Cài đặt phần mềm client in | Agent cài trên PC địa phương nhà hàng; xác thực đến SignalR hub bằng thông tin đăng nhập nhà hàng |
+| Cảnh báo nhân viên khi lỗi in | Nếu máy in offline, Dashboard nhân viên hiển thị cảnh báo kèm chi tiết đơn bị ảnh hưởng |
 
 ---
 
@@ -128,7 +131,7 @@
 | Nhân viên đăng nhập bằng PIN | PIN được xác thực; nhân viên giới hạn trong nhà hàng của họ |
 | Màn hình tổng quan hiển thị tất cả bàn | Mỗi bàn hiển thị: trống / có khách / có đơn sẵn sàng |
 | Nhân viên xem đơn hàng theo bàn | Danh sách đơn đầy đủ cho một bàn; trạng thái từng món hiển thị |
-| Nhân viên đánh dấu bàn đã phục vụ / đóng | Phiên đóng; bàn trở về trạng thái "trống" |
+| Nhân viên đóng bàn sau khi thực khách thanh toán | Sau khi thực khách thanh toán tại quầy, nhân viên đóng phiên; bàn trở về trạng thái "trống" |
 | Nhân viên có thể huỷ đơn hàng | Trạng thái đơn chuyển sang "Đã huỷ"; thực khách được thông báo qua SignalR |
 
 ---
@@ -153,7 +156,9 @@
 | Story | Tiêu chí chấp nhận |
 |-------|--------------------|
 | Admin tạo tenant nhà hàng | Bản ghi nhà hàng được tạo; email mời tài khoản chủ nhà hàng được gửi |
-| Admin xem tất cả tenant | Bảng hiển thị tên nhà hàng, chủ sở hữu, trạng thái, số đơn hàng |
+| Admin xem tất cả tenant | Bảng hiển thị tên nhà hàng, email chủ, trạng thái (pending/active/suspended), số đơn hàng |
+| Admin xem xét đăng ký chờ phê duyệt | Danh sách chủ nhà hàng có trạng thái "Chờ phê duyệt"; hiển thị thông tin Google; hành động phê duyệt/từ chối |
+| Admin phê duyệt chủ nhà hàng | Trạng thái chuyển sang "Hoạt động"; chủ nhận thông báo và có thể truy cập dashboard |
 | Admin tạm dừng / kích hoạt lại nhà hàng | Nhà hàng bị tạm dừng hiển thị trang bảo trì với thực khách |
 
 ---

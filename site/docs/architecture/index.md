@@ -7,25 +7,26 @@
 ## Component Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        GUEST DEVICE                         │
-│          Browser (no install) — scans QR code               │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTPS
-┌────────────────────────▼────────────────────────────────────┐
-│                     NGINX (reverse proxy)                    │
-│           TLS termination · static asset cache              │
-└──────┬────────────────────────────────────────┬─────────────┘
-       │ /api/*                                  │ /hub/*
-┌──────▼──────────────┐              ┌──────────▼──────────────┐
-│   .NET 8 REST API   │              │  ASP.NET Core SignalR   │
-│   (Minimal API)     │              │  WebSocket Hub          │
-└──────┬──────────────┘              └──────────┬──────────────┘
-       │                                         │
-┌──────▼─────────────────────────────────────────▼─────────────┐
-│                        SUPABASE                               │
-│   PostgreSQL (RLS) · GoTrue Auth · File Storage               │
-└───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                     GUEST DEVICE                          │
+│       Browser (no install) — scans QR code               │
+└──────────────┬────────────────────────┬───────────────────┘
+               │ SPA assets             │ API / WebSocket
+      ┌────────▼──────────┐    ┌────────▼──────────────────────────┐
+      │    VERCEL CDN      │    │       CIVO COMPUTE VM              │
+      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 8 · SignalR    │
+      └────────────────────┘    └────────┬───────────────────────────┘
+                                          │
+                              ┌───────────▼────────────────────────┐
+                              │           SUPABASE                  │
+                              │  PostgreSQL · GoTrue Auth · S3      │
+                              └────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│            RESTAURANT LOCAL NETWORK                        │
+│  Print Client ──► Kitchen Thermal Printer  (food items)   │
+│             └───► Bar Thermal Printer      (drink items)   │
+│  (SignalR subscriber — receives print events from backend) │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -36,12 +37,9 @@
 
 | App | Users | Stack |
 |-----|-------|-------|
-| Guest Menu | Diners (anonymous) | Vue 3 + Vite, mobile-first |
-| Staff Dashboard | Waiters (PIN auth) | Vue 3 + Vite |
-| Owner Dashboard | Restaurant managers | Vue 3 + Vite |
-| Admin Panel | Platform operators | Vue 3 + Vite |
+| Unified SPA | All roles (Guest, Staff, Owner, Admin) | Vue 3 + Vuetify, role-based routing |
 
-All four apps are built as separate Vite SPA bundles and served by Nginx.
+The single Vuetify SPA is deployed on **Vercel**. It renders different views based on user role: guests access it anonymously via QR scan, while staff, owners, and admins authenticate before reaching their respective dashboards.
 
 ### Backend API (.NET 8)
 
@@ -98,10 +96,33 @@ Nginx upstream
 
 ```yaml
 services:
-  api:    # .NET 8 API
-  web:    # Vue 3 frontend (Nginx static)
-  hub:    # SignalR hub (or co-hosted with api)
+  api:    # .NET 8 API + SignalR Hub (co-hosted)
+  # Frontend is deployed to Vercel — not part of this Docker Compose
 ```
+
+---
+
+## Thermal Print Architecture
+
+Orders are analysed for item type before being persisted, then a `PrintEvent` is dispatched via SignalR:
+- Items tagged **food** → `PrintEvent` to `kitchen` SignalR group
+- Items tagged **drink** → `PrintEvent` to `bar` SignalR group
+
+A **Print Client Agent** (lightweight daemon) runs on-premises at each restaurant:
+
+```
+SignalR Hub (Civo VM)
+  └─► Print Client Agent (restaurant local PC)
+        ├── Kitchen Thermal Printer — food items (ESC/POS over USB/LAN)
+        └── Bar Thermal Printer    — drink items (ESC/POS over USB/LAN)
+```
+
+| Concern | Approach |
+|---------|----------|
+| Printer protocol | ESC/POS (industry standard thermal printers) |
+| Separation | Each printer subscribes to its own SignalR group (`kitchen` vs `bar`) |
+| Failure handling | Offline printer triggers `PrintFailed` event → Staff Dashboard alert |
+| Ticket content | Table #, Order #, items + quantities + notes, timestamp |
 
 ---
 
@@ -114,7 +135,7 @@ services:
 | Multi-tenant isolation | Supabase RLS policies per `restaurant_id` |
 | QR token safety | HMAC-signed table token — no PII embedded |
 | Staff PIN storage | bcrypt-hashed, never stored in plaintext |
-| CORS | API restricted to known frontend origins |
+| CORS | API restricted to Vercel deployment domain and preview URLs |
 | Rate limiting | Nginx + ASP.NET Core rate limiter middleware |
 | Secrets | Environment variables only — no hardcoded credentials |
 

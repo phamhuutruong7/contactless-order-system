@@ -45,7 +45,7 @@ Traditional restaurant ordering suffers from:
 - QR code generation per table
 - Guest-facing digital menu browse & order
 - Real-time order status tracking (guest + kitchen + staff)
-- Kitchen display view
+- Thermal print ticket routing (kitchen printer + bar printer)
 - Staff management dashboard
 - Restaurant owner menu & table management
 - Multi-restaurant platform admin panel
@@ -89,7 +89,8 @@ Traditional restaurant ordering suffers from:
 
 > The business owner or manager of a single restaurant.
 
-- Full account with email/password auth
+- Full account with **Google OAuth** sign-in — no password setup required
+- Account starts in **Pending Approval** status; must be activated by PlatformAdmin after fee payment is confirmed
 - Manages the digital menu (add/edit/archive items, set availability)
 - Manages tables (add/remove, generate/refresh QR codes)
 - Views order history, revenue reports, and guest feedback
@@ -102,6 +103,7 @@ Traditional restaurant ordering suffers from:
 - Creates and manages restaurant tenants
 - Views cross-tenant metrics and health
 - Can suspend or deactivate restaurants
+- Reviews and **approves** new restaurant owner registrations after fee payment is confirmed
 - Manages platform-wide configuration
 
 ---
@@ -138,28 +140,31 @@ Traditional restaurant ordering suffers from:
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| F3.1 | Orders are pushed instantly to the kitchen display via SignalR | Must Have |
-| F3.2 | Kitchen staff can update order status: Received → Preparing → Ready | Must Have |
+| F3.1 | New orders trigger a print event via SignalR — food items routed to kitchen printer, drink items to bar printer | Must Have |
+| F3.2 | Order status auto-advances to "Preparing" when the print ticket is dispatched | Must Have |
 | F3.3 | Guest sees live order status updates on their device without page refresh | Must Have |
 | F3.4 | Status change triggers an on-screen notification to the guest | Should Have |
 | F3.5 | Staff dashboard shows all active orders across all tables, sortable by time | Must Have |
 | F3.6 | System alerts if an order has been in "Received" state > 5 minutes (configurable) | Could Have |
 
-### F4 — Kitchen Display System (KDS)
+### F4 — Thermal Print System
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| F4.1 | Dedicated kitchen view shows incoming orders with table number and item detail | Must Have |
-| F4.2 | Kitchen staff can mark individual items or whole orders as ready | Must Have |
-| F4.3 | Orders are displayed oldest-first; completed orders are archived / hidden | Must Have |
-| F4.4 | Audio or visual alert on new order arrival | Should Have |
+| F4.1 | Each menu item is tagged as **food** or **drink** to determine print routing | Must Have |
+| F4.2 | Food items in an order are automatically printed on the **kitchen thermal printer** | Must Have |
+| F4.3 | Drink items in an order are automatically printed on the **bar thermal printer** | Must Have |
+| F4.4 | Each printed ticket shows: table number, order number, items, quantities, and item notes | Must Have |
+| F4.5 | Kitchen and bar printers operate independently — a drink-only order does not trigger the kitchen printer | Must Have |
+| F4.6 | A lightweight **print client agent** runs at the restaurant, listening for SignalR print events | Must Have |
+| F4.7 | Print failure (offline printer) surfaces a visual alert in the Staff Dashboard | Should Have |
 
 ### F5 — Staff Dashboard
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | F5.1 | Staff can view all tables and their current status (free / occupied / needs attention) | Must Have |
-| F5.2 | Staff can mark a table as served (close the session / reset the table) | Must Have |
+| F5.2 | Staff can close a table session and reset the table after the guest has paid at the restaurant counter | Must Have |
 | F5.3 | Staff can view and cancel individual orders | Must Have |
 | F5.4 | Staff authenticate via 4-6 digit PIN (no email login required) | Must Have |
 
@@ -184,17 +189,20 @@ Traditional restaurant ordering suffers from:
 | F7.2 | Platform admin can view all tenants and their status | Must Have |
 | F7.3 | Platform admin can suspend / reactivate a tenant | Must Have |
 | F7.4 | Platform admin can view cross-tenant order volume metrics | Could Have |
+| F7.5 | Platform admin reviews pending restaurant owner registrations and approves or rejects them | Must Have |
+| F7.6 | Approval activates the restaurant owner account; rejection sends a notification email | Must Have |
 
 ### F8 — Authentication & Authorization
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| F8.1 | Owner and platform admin auth via Supabase Auth (email + password + JWT) | Must Have |
+| F8.1 | Restaurant owners sign in via **Google OAuth** (Supabase Auth social login); new accounts start in "Pending Approval" state | Must Have |
 | F8.2 | Staff auth via restaurant-scoped PIN (no email required) | Must Have |
 | F8.3 | Guest sessions are anonymous and scoped to table + restaurant | Must Have |
 | F8.4 | Row-Level Security (RLS) enforced in Supabase — tenants cannot read each other's data | Must Have |
 | F8.5 | API validates JWT/session on every request | Must Have |
 | F8.6 | Role hierarchy enforced: Platform Admin > Owner > Staff > Guest | Must Have |
+| F8.7 | Restaurant owner cannot access any platform features until PlatformAdmin approves the account | Must Have |
 
 ---
 
@@ -217,14 +225,14 @@ Traditional restaurant ordering suffers from:
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend (Guest + Staff + Owner) | Vue 3 + Vite / or React 18 + Vite |
-| Backend API | .NET 8 Minimal API (ASP.NET Core) |
-| Real-Time Hub | ASP.NET Core SignalR (WebSocket) |
-| Auth & Database | Supabase (PostgreSQL + GoTrue Auth) |
+| Frontend (All roles) | Vue 3 + **Vuetify** — single unified SPA deployed on **Vercel** |
+| Backend API | .NET 8 Minimal API (ASP.NET Core) — on Civo VM |
+| Real-Time Hub | ASP.NET Core SignalR (WebSocket) — co-hosted with API on Civo VM |
+| Auth & Database | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |
 | File Storage | Supabase Storage (menu item photos) |
-| Infrastructure | Civo Kubernetes / Compute VM |
-| Deployment | Docker Compose, blue-green switch via Nginx upstream |
-| CI/CD | GitHub Actions → SSH deploy to Civo |
+| Infrastructure | Civo Compute VM (backend) + Vercel (frontend CDN) |
+| Deployment | Docker Compose blue-green (backend on Civo); Vercel Git integration (frontend) |
+| CI/CD | GitHub Actions → SSH deploy to Civo (backend); Vercel auto-deploy on push (frontend) |
 | Docs | VitePress (this site) |
 
 ---
@@ -232,10 +240,10 @@ Traditional restaurant ordering suffers from:
 ## 9. Data Model (High-Level)
 
 ```
-Restaurant
+Restaurant (owner_status: pending|active|suspended)
   ├── Tables (table_number, qr_token)
   ├── MenuCategories (name, sort_order)
-  │   └── MenuItems (name, description, price, photo_url, is_available)
+  │   └── MenuItems (name, description, price, photo_url, is_available, item_type: food|drink)
   ├── Staff (name, pin_hash, role)
   └── Orders
         ├── (table_id, session_id, status, created_at)
@@ -251,14 +259,14 @@ Restaurant
 2. Browser opens menu page (no install, no login)
 3. Guest browses categories, adds items, optionally adds notes
 4. Guest taps "Place Order" → order submitted
-5. Kitchen receives order instantly (SignalR push)
-6. Kitchen updates status to "Preparing"
-7. Guest sees ⟳ "Being prepared" on their screen
-8. Kitchen marks order "Ready"
-9. Staff sees notification → delivers food → marks "Served"
+5. Food items auto-print on the kitchen thermal printer; drink items auto-print on the bar thermal printer
+6. Order status advances to "Preparing" automatically
+7. Guest sees ⟳ "Being prepared" on their device
+8. Kitchen / bar staff prepare items from the printed ticket — no screen interaction needed
+9. Staff delivers food and drinks → marks "Served" in the Staff Dashboard
 10. Guest sees ✓ "Order complete"
 11. Guest may place additional orders (repeat from step 3)
-12. Staff closes table session when guests leave
+12. Guest pays at the restaurant counter → Staff closes the table session
 ```
 
 ---
