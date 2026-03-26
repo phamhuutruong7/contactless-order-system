@@ -29,7 +29,10 @@ const viNav = [
 const enSidebar = [
   {
     text: 'Planning',
-    items: [{ text: 'Product Requirements (PRD)', link: '/docs/planning/' }],
+    items: [
+      { text: 'Product Requirements (PRD)', link: '/docs/planning/' },
+      { text: 'Project Timeline', link: '/docs/planning/timeline/' },
+    ],
   },
   {
     text: 'Architecture',
@@ -111,7 +114,10 @@ const enSidebar = [
 const viSidebar = [
   {
     text: 'Kế hoạch',
-    items: [{ text: 'Yêu cầu sản phẩm (PRD)', link: '/vi/docs/planning/' }],
+    items: [
+      { text: 'Yêu cầu sản phẩm (PRD)', link: '/vi/docs/planning/' },
+      { text: 'Tiến độ dự án', link: '/vi/docs/planning/timeline/' },
+    ],
   },
   {
     text: 'Kiến trúc',

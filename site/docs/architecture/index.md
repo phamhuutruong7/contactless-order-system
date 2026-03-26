@@ -204,4 +204,27 @@ git push origin main
 
 ---
 
+## Repository Strategy
+
+### Two-Repo Split
+
+| Repository | Contents |
+|------------|----------|
+| `contactless-order-backend` | `src/Api/`, `docker-compose.yml`, `docker-compose.blue.yml`, `docker-compose.green.yml`, `switch-stack.sh`, `supabase/migrations/`, `.github/workflows/deploy-api.yml` |
+| `contactless-order-frontend` | `src/Frontend/`, `.github/workflows/deploy-vercel.yml` |
+
+### Infrastructure File Placement
+
+| File / Folder | Lives In | Reason |
+|---------------|----------|--------|
+| `docker-compose.yml` + Nginx config | `contactless-order-backend` | Tightly coupled to the API container |
+| Blue-green scripts (`switch-stack.sh`) | `contactless-order-backend` | Controls API deployment lifecycle |
+| `supabase/migrations/` | `contactless-order-backend` | Schema is owned by the API service |
+| Civo VM provisioning (Terraform/API) | Separate `infra` repo *(optional)* | Only justified if infra complexity grows |
+| Vercel config / `vercel.json` | `contactless-order-frontend` | Front-end-specific deployment config |
+
+> **Rule of thumb:** Infrastructure config belongs to the repo that *runs* the service it configures. Split into a dedicated `infra` repo only when provisioning complexity justifies the overhead.
+
+---
+
 *Architecture maintained by development team. Last updated: March 2026.*

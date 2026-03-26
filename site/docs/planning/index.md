@@ -231,9 +231,8 @@ Traditional restaurant ordering suffers from:
 | Layer | Technology |
 |-------|-----------|
 | Frontend (All roles) | Vue 3 + **Vuetify** — single unified SPA deployed on **Vercel** |
-| Backend API | .NET 10 + Clean Architecture (Jason Taylor) — on Civo VM |
-| Application Layer | Wolverine (JasperFx) — CQRS Commands/Queries + durable PostgreSQL outbox |
-| ORM | EF Core 10 with Npgsql provider |
+| Backend API | .NET 10 Minimal API (flat single-project `src/Api/`) — on Civo VM |
+| Data Access | Supabase .NET SDK + Npgsql (raw SQL — no ORM, no migrations) |
 | Dev Orchestration | .NET Aspire AppHost + ServiceDefaults (dev only) |
 | Real-Time Hub | ASP.NET Core SignalR (WebSocket) — co-hosted with API on Civo VM |
 | Auth & Database | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |

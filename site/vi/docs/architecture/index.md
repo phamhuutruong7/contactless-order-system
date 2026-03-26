@@ -138,7 +138,7 @@ Máy in Star Micronics mC-Print3 sử dụng giao thức **CloudPRNT** — máy 
 
 ### Luồng hoạt động
 
-1. Khi đơn hàng được xác nhận, backend tạo job in trong outbox PostgreSQL bền vững (Wolverine) và phân theo `item_type`:
+1. Khi đơn hàng được xác nhận, backend tạo job in trong hàng đợi PostgreSQL và phân theo `item_type`:
    - Đồ ăn → job gắn với device token máy in bếp
    - Đồ uống → job gắn với device token máy in bar
 2. Máy in mC-Print3 **tự polling** `GET /api/print/poll?deviceToken=<token>` mỗi 2–3 giây.
@@ -193,6 +193,29 @@ git push origin main
         ├── docker push (registry)
         └── SSH → Civo Prod VM → switch-stack.sh (blue-green)
 ```
+
+---
+
+## Chiến lược Repository
+
+### Phân chia 2 Repo
+
+| Repository | Nội dung |
+|------------|----------|
+| `contactless-order-backend` | `src/Api/`, `docker-compose.yml`, `docker-compose.blue.yml`, `docker-compose.green.yml`, `switch-stack.sh`, `supabase/migrations/`, `.github/workflows/deploy-api.yml` |
+| `contactless-order-frontend` | `src/Frontend/`, `.github/workflows/deploy-vercel.yml` |
+
+### Vị trí các File Hạ tầng
+
+| File / Thư mục | Thuộc về | Lý do |
+|----------------|----------|-------|
+| `docker-compose.yml` + cấu hình Nginx | `contactless-order-backend` | Gắn chặt với API container |
+| Scripts blue-green (`switch-stack.sh`) | `contactless-order-backend` | Kiểm soát vòng đời deploy API |
+| `supabase/migrations/` | `contactless-order-backend` | Schema thuộc sở hữu của API service |
+| Civo VM provisioning (Terraform/API) | Repo `infra` riêng *(tùy chọn)* | Chỉ hợp lý khi độ phức tạp hạ tầng tăng cao |
+| Vercel config / `vercel.json` | `contactless-order-frontend` | Cấu hình deploy dành riêng cho frontend |
+
+> **Nguyên tắc:** Cấu hình hạ tầng thuộc về repo *chạy* service mà nó cấu hình. Chỉ tách ra repo `infra` riêng khi độ phức tạp của provisioning đủ lớn để biện minh cho chi phí quản lý thêm.
 
 ---
 

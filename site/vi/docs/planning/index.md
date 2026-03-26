@@ -231,9 +231,8 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | Tầng | Công nghệ |
 |------|-----------|
 | Frontend (Tất cả vai trò) | Vue 3 + **Vuetify** — một SPA duy nhất triển khai trên **Vercel** |
-| Backend API | .NET 10 + Clean Architecture (Jason Taylor) — trên Civo VM |
-| Tầng Application | Wolverine (JasperFx) — CQRS Commands/Queries + outbox PostgreSQL bền vững |
-| ORM | EF Core 10 với Npgsql provider |
+| Backend API | .NET 10 Minimal API (một project phẳng `src/Api/`) — trên Civo VM |
+| Truy cập dữ liệu | Supabase .NET SDK + Npgsql (raw SQL — không ORM, không migration) |
 | Điều phối Dev | .NET Aspire AppHost + ServiceDefaults (chỉ dùng khi dev) |
 | Hub thời gian thực | ASP.NET Core SignalR (WebSocket) — co-hosted với API trên Civo VM |
 | Xác thực & Cơ sở dữ liệu | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |
