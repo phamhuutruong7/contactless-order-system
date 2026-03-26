@@ -5,6 +5,8 @@ const enNav = [
   { text: 'PRD', link: '/docs/planning/' },
   { text: 'Architecture', link: '/docs/architecture/' },
   { text: 'User Stories', link: '/docs/stories/' },
+  { text: 'CloudPRNT Guide', link: '/docs/printing/' },
+  { text: 'Pricing', link: '/docs/pricing/' },
 ]
 
 const viNav = [
@@ -12,6 +14,8 @@ const viNav = [
   { text: 'PRD', link: '/vi/docs/planning/' },
   { text: 'Kiến trúc', link: '/vi/docs/architecture/' },
   { text: 'User Stories', link: '/vi/docs/stories/' },
+  { text: 'Hướng dẫn CloudPRNT', link: '/vi/docs/printing/' },
+  { text: 'Bảng giá', link: '/vi/docs/pricing/' },
 ]
 
 const enSidebar = [
@@ -27,6 +31,14 @@ const enSidebar = [
     text: 'User Stories',
     items: [{ text: 'Epics & Stories', link: '/docs/stories/' }],
   },
+  {
+    text: 'Printing',
+    items: [{ text: 'CloudPRNT Integration Guide', link: '/docs/printing/' }],
+  },
+  {
+    text: 'Pricing',
+    items: [{ text: 'Fee Estimation', link: '/docs/pricing/' }],
+  },
 ]
 
 const viSidebar = [
@@ -41,6 +53,14 @@ const viSidebar = [
   {
     text: 'User Stories',
     items: [{ text: 'Epics & Stories', link: '/vi/docs/stories/' }],
+  },
+  {
+    text: 'In ấn',
+    items: [{ text: 'Hướng dẫn CloudPRNT', link: '/vi/docs/printing/' }],
+  },
+  {
+    text: 'Bảng giá',
+    items: [{ text: 'Ước tính chi phí', link: '/vi/docs/pricing/' }],
   },
 ]
 
