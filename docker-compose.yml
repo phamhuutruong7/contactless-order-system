@@ -5,8 +5,8 @@
 #   SUPABASE_URL, SUPABASE_JWT_SECRET, STAFF_JWT_SECRET
 #
 # App source paths when building locally:
-#   API:      ./src/Api     (ASP.NET Core 8 Minimal API)
-#   Frontend: ./src/Web     (Vue 3 + Vite)
+#   API:      ./src/Api     (.NET 10 Minimal API)
+#   Frontend: ./src/Frontend (Vue 3 + Vite)
 
 services:
   api:

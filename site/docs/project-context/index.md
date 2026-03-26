@@ -273,11 +273,19 @@ npm run build    # Production build
 ### Environment Variables
 
 ```env
-# Backend (.env or GitHub Secrets)
+# docker-compose .env (CI/CD + production)
+IMAGE_API=registry/contactless-order-api:latest
+IMAGE_FRONTEND=registry/contactless-order-frontend:latest
+DATABASE_URL=postgresql://postgres:<password>@<host>:5432/postgres
 SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_SERVICE_KEY=<service_role_key>
 SUPABASE_JWT_SECRET=<jwt_secret>
-SIGNALR_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+STAFF_JWT_SECRET=<staff_jwt_secret>
+
+# ASP.NET Core runtime (__ = nested config hierarchy)
+ConnectionStrings__DefaultConnection=${DATABASE_URL}
+Supabase__Url=${SUPABASE_URL}
+Supabase__JwtSecret=${SUPABASE_JWT_SECRET}
+Staff__JwtSecret=${STAFF_JWT_SECRET}
 
 # Aspire local dev overrides (when running src/AppHost via dotnet run)
 SUPABASE_DB_HOST=localhost

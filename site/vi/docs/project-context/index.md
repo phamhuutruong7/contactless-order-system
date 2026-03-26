@@ -245,6 +245,36 @@ npm run dev      # Xem trước tại http://localhost:5173
 npm run build    # Build production
 ```
 
+### Biến Môi Trường
+
+```env
+# docker-compose .env (CI/CD + production)
+IMAGE_API=registry/contactless-order-api:latest
+IMAGE_FRONTEND=registry/contactless-order-frontend:latest
+DATABASE_URL=postgresql://postgres:<mật_khẩu>@<host>:5432/postgres
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_JWT_SECRET=<jwt_secret>
+STAFF_JWT_SECRET=<staff_jwt_secret>
+
+# ASP.NET Core runtime (__ = cấu trúc cấu hình lồng nhau)
+ConnectionStrings__DefaultConnection=${DATABASE_URL}
+Supabase__Url=${SUPABASE_URL}
+Supabase__JwtSecret=${SUPABASE_JWT_SECRET}
+Staff__JwtSecret=${STAFF_JWT_SECRET}
+
+# Ghi đè Aspire local dev (khi chạy src/AppHost qua dotnet run)
+SUPABASE_DB_HOST=localhost
+SUPABASE_DB_PORT=54322
+SUPABASE_AUTH_PORT=9999
+SUPABASE_DB_PASSWORD=postgres
+
+# Frontend (.env.local)
+VITE_API_BASE=http://localhost:5000
+VITE_SIGNALR_HUB=/hubs/orders
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon_key>
+```
+
 ---
 
 ## 8. Quy Ước Viết Code

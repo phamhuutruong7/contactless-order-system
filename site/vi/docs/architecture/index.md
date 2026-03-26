@@ -42,21 +42,23 @@
 
 SPA Vuetify duy nhất được triển khai trên **Vercel**. Hiển thị giao diện khác nhau dựa trên vai trò người dùng: thực khách truy cập ẩn danh qua mã QR, nhân viên/chủ nhà hàng/admin xác thực trước khi vào dashboard của họ.
 
-### Backend API (.NET 10 — Clean Architecture)
+### Backend API (.NET 10 — Minimal API)
 
-Xây dựng theo [mẫu Clean Architecture của Jason Taylor](https://github.com/jasontaylordev/CleanArchitecture):
+Dự án đơn ASP.NET Core Minimal API (`src/Api/`):
 
-| Tầng | Trách nhiệm |
-|------|-------------|
-| **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
-| **Application** | CQRS Commands/Queries (Wolverine), Interfaces, DTOs, FluentValidation, outbox PostgreSQL bền vững |
-| **Infrastructure** | EF Core + Npgsql, triển khai SignalR hub, controller polling CloudPRNT |
-| **Api** | ASP.NET Core Web API — controllers hoặc minimal endpoints; JWT middleware |
+| Thư mục / File | Mục đích |
+|---------------|----------|
+| `Endpoints/` | Route handler nhóm theo domain |
+| `Hubs/` | SignalR hub (`OrderHub`) |
+| `Models/` | Request / response DTO |
+| `Services/` | Logic nghiệp vụ và wrapper Supabase client |
+| `Middleware/` | Xác thực JWT, phạm vi tenant |
+| `Program.cs` | Đăng ký DI, middleware pipeline, ánh xạ route |
 
 - Xác thực JWT trên tất cả route được bảo vệ (token phát hành bởi Supabase)
 - Xác thực nhân viên bằng PIN trả về JWT ngắn hạn giới hạn phạm vi
 - Đảm bảo multi-tenancy: mọi truy vấn đều có vùng `restaurant_id`
-- **ORM**: EF Core 10 với Npgsql provider; migrations tại `Infrastructure/Persistence/Migrations/`
+- **Truy cập dữ liệu**: Supabase .NET SDK + Npgsql (SQL thuần — không dùng ORM, không migration)
 
 ### Thời gian thực (SignalR)
 

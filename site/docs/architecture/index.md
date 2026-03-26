@@ -42,21 +42,23 @@
 
 The single Vuetify SPA is deployed on **Vercel**. It renders different views based on user role: guests access it anonymously via QR scan, while staff, owners, and admins authenticate before reaching their respective dashboards.
 
-### Backend API (.NET 10 — Clean Architecture)
+### Backend API (.NET 10 — Minimal API)
 
-Structured following [Jason Taylor's Clean Architecture template](https://github.com/jasontaylordev/CleanArchitecture):
+Flat single-project ASP.NET Core Minimal API (`src/Api/`):
 
-| Layer | Responsibilities |
-|-------|------------------|
-| **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
-| **Application** | CQRS Commands/Queries (Wolverine), Interfaces, DTOs, FluentValidation, durable PostgreSQL outbox |
-| **Infrastructure** | EF Core + Npgsql, SignalR hub implementation, CloudPRNT polling controller |
-| **Api** | ASP.NET Core Web API — controllers or minimal endpoints; JWT middleware |
+| Folder / File | Purpose |
+|--------------|----------|
+| `Endpoints/` | Minimal API route handlers grouped by domain |
+| `Hubs/` | SignalR hub (`OrderHub`) |
+| `Models/` | Request / response DTOs |
+| `Services/` | Business logic and Supabase client wrappers |
+| `Middleware/` | JWT validation, tenant scoping |
+| `Program.cs` | DI registration, middleware pipeline, route mapping |
 
 - JWT validation on all protected routes (Supabase-issued tokens)
 - PIN-based staff auth returns a scoped short-lived JWT
 - Multi-tenancy enforced: every query includes `restaurant_id` scope
-- **ORM**: EF Core 10 with Npgsql provider; migrations in `Infrastructure/Persistence/Migrations/`
+- **Data access**: Supabase .NET SDK + Npgsql (raw SQL — no ORM, no migrations)
 
 ### Real-Time (SignalR)
 
