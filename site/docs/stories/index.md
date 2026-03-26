@@ -33,6 +33,7 @@
 | Civo Prod VM provisioned with blue-green | Both stacks (blue/green) startable; Nginx upstream switch works | 🔲 Planned |
 | GitHub Actions: deploy-dev workflow | Push to `dev` → SSH deploy → app accessible on dev VM | 🔲 Planned |
 | GitHub Actions: deploy-prod workflow | Push to `main` → blue-green deploy → zero-downtime confirmed | 🔲 Planned |
+| Set up .NET Aspire AppHost for local dev | AppHost project references API + local Supabase container; `dotnet run --project AppHost` starts full dev stack; dev-only, not present in production images | 🔲 Planned |
 
 ---
 
@@ -117,7 +118,9 @@
 | Food items auto-print to kitchen printer | On order submit, food items routed to kitchen thermal printer; ticket shows table #, order #, items, quantities, notes |
 | Drink items auto-print to bar printer | On order submit, drink items routed to bar thermal printer; same ticket format |
 | Mixed orders print to both printers | An order with both food and drink triggers both printers independently |
-| Print client agent setup | Agent installed on restaurant local PC; authenticates to SignalR hub using restaurant credentials |
+| Print client agent setup | Self-contained `.exe` installed on restaurant local PC; connects to SignalR hub using `DeviceToken` in the connection header |
+| Owner generates device token | Owner Dashboard generates a one-time `DeviceToken` for the Print Agent; token stored in backend and used for agent authentication |
+| Configure agent via `appsettings.json` | Agent config includes `RestaurantId`, `DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`; static IPs set by restaurant owner |
 | Staff alerted on print failure | If printer is offline, Staff Dashboard shows a banner alert with the affected order details |
 
 ---

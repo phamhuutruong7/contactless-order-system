@@ -156,7 +156,7 @@ Traditional restaurant ordering suffers from:
 | F4.3 | Drink items in an order are automatically printed on the **bar thermal printer** | Must Have |
 | F4.4 | Each printed ticket shows: table number, order number, items, quantities, and item notes | Must Have |
 | F4.5 | Kitchen and bar printers operate independently — a drink-only order does not trigger the kitchen printer | Must Have |
-| F4.6 | A lightweight **print client agent** runs at the restaurant, listening for SignalR print events | Must Have |
+| F4.6 | A **Print Client Agent** (.NET 10 Worker Service `.exe`) runs at the restaurant; configured via `appsettings.json` (`DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`); sends ePOS-Print XML to Epson TM-T82III printers; authenticated via per-restaurant `DeviceToken` | Must Have |
 | F4.7 | Print failure (offline printer) surfaces a visual alert in the Staff Dashboard | Should Have |
 
 ### F5 — Staff Dashboard
@@ -226,7 +226,9 @@ Traditional restaurant ordering suffers from:
 | Layer | Technology |
 |-------|-----------|
 | Frontend (All roles) | Vue 3 + **Vuetify** — single unified SPA deployed on **Vercel** |
-| Backend API | .NET 8 Minimal API (ASP.NET Core) — on Civo VM |
+| Backend API | .NET 10 + Clean Architecture (Jason Taylor) — on Civo VM |
+| ORM | EF Core 10 with Npgsql provider |
+| Dev Orchestration | .NET Aspire AppHost + ServiceDefaults (dev only) |
 | Real-Time Hub | ASP.NET Core SignalR (WebSocket) — co-hosted with API on Civo VM |
 | Auth & Database | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |
 | File Storage | Supabase Storage (menu item photos) |

@@ -156,7 +156,7 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | F4.3 | Đồ uống trong đơn tự động in trên **máy in nhiệt quầy bar** | Bắt buộc |
 | F4.4 | Mỗi vé in hiển thị: số bàn, số đơn, danh sách món, số lượng và ghi chú | Bắt buộc |
 | F4.5 | Máy in bếp và quầy bar hoạt động độc lập — đơn chỉ có đồ uống không kích hoạt máy in bếp | Bắt buộc |
-| F4.6 | Một **phần mềm client in** nhẹ chạy tại nhà hàng, lắng nghe sự kiện in qua SignalR | Bắt buộc |
+| F4.6 | Một **Phần mềm client in** (.NET 10 Worker Service `.exe`) chạy tại nhà hàng; cấu hình qua `appsettings.json` (`DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`); gửi ePOS-Print XML đến máy in Epson TM-T82III; xác thực bằng `DeviceToken` riêng cho từng nhà hàng | Bắt buộc |
 | F4.7 | Lỗi in (máy in offline) hiện cảnh báo trực quan trên Dashboard nhân viên | Nên có |
 
 ### F5 — Dashboard nhân viên phục vụ
@@ -226,7 +226,9 @@ Quy trình đặt món truyền thống tại nhà hàng tồn tại nhiều h�
 | Tầng | Công nghệ |
 |------|-----------|
 | Frontend (Tất cả vai trò) | Vue 3 + **Vuetify** — một SPA duy nhất triển khai trên **Vercel** |
-| Backend API | .NET 8 Minimal API (ASP.NET Core) — trên Civo VM |
+| Backend API | .NET 10 + Clean Architecture (Jason Taylor) — trên Civo VM |
+| ORM | EF Core 10 với Npgsql provider |
+| Điều phối Dev | .NET Aspire AppHost + ServiceDefaults (chỉ dùng khi dev) |
 | Hub thời gian thực | ASP.NET Core SignalR (WebSocket) — co-hosted với API trên Civo VM |
 | Xác thực & Cơ sở dữ liệu | Supabase (PostgreSQL + GoTrue Auth + Google OAuth) |
 | Lưu trữ tệp | Supabase Storage (ảnh món ăn) |

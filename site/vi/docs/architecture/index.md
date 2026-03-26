@@ -14,7 +14,7 @@
                │ Tài nguyên SPA             │ API / WebSocket
       ┌────────▼──────────┐    ┌────────▼──────────────────────────┐
       │    VERCEL CDN      │    │       CIVO COMPUTE VM              │
-      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 8 · SignalR    │
+      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 10 · SignalR   │
       └────────────────────┘    └────────┬───────────────────────────┘
                                           │
                               ┌───────────▼────────────────────────┐
@@ -41,13 +41,21 @@
 
 SPA Vuetify duy nhất được triển khai trên **Vercel**. Hiển thị giao diện khác nhau dựa trên vai trò người dùng: thực khách truy cập ẩn danh qua mã QR, nhân viên/chủ nhà hàng/admin xác thực trước khi vào dashboard của họ.
 
-### Backend API (.NET 8)
+### Backend API (.NET 10 — Clean Architecture)
 
-- Endpoints **Minimal API** được nhóm theo domain: `auth`, `restaurants`, `menus`, `tables`, `orders`
+Xây dựng theo [mẫu Clean Architecture của Jason Taylor](https://github.com/jasontaylordev/CleanArchitecture):
+
+| Tầng | Trách nhiệm |
+|------|-------------|
+| **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
+| **Application** | CQRS Commands/Queries (MediatR), Interfaces, DTOs, FluentValidation |
+| **Infrastructure** | EF Core + Npgsql, triển khai SignalR hub, HTTP adapter ePOS-Print |
+| **Api** | ASP.NET Core Web API — controllers hoặc minimal endpoints; JWT middleware |
+
 - Xác thực JWT trên tất cả route được bảo vệ (token phát hành bởi Supabase)
 - Xác thực nhân viên bằng PIN trả về JWT ngắn hạn giới hạn phạm vi
 - Đảm bảo multi-tenancy: mọi truy vấn đều có vùng `restaurant_id`
-- Không dùng ORM — truy vấn SQL thuần qua Npgsql hoặc Dapper để minh bạch hiệu năng
+- **ORM**: EF Core 10 với Npgsql provider; migrations tại `Infrastructure/Persistence/Migrations/`
 
 ### Thời gian thực (SignalR)
 
@@ -96,31 +104,78 @@ Nginx upstream
 
 ```yaml
 services:
-  api:    # .NET 8 API + SignalR Hub (co-hosted)
+  api:    # .NET 10 API + SignalR Hub (co-hosted)
   # Frontend được triển khai trên Vercel — không nằm trong Docker Compose này
 ```
+
+### Môi trường phát triển (.NET Aspire)
+
+.NET Aspire được dùng **chỉ cho phát triển local** — không triển khai lên production.
+
+| Thành phần | Vai trò |
+|------------|---------|
+| Project **AppHost** | Điều phối API project + local Supabase container stack |
+| Project **ServiceDefaults** | OpenTelemetry traces/metrics, health checks, service discovery |
+| Supabase local container | Supabase tự-host đầy đủ (PostgreSQL + GoTrue Auth + Storage) |
+
+```csharp
+// AppHost Program.cs (chỉ dùng khi dev)
+var supabase = builder.AddContainer("supabase", "supabase/postgres");
+var api = builder.AddProject<Projects.Api>("api")
+                 .WithReference(supabase);
+```
+
+> Production dùng Docker Compose blue-green (không thay đổi). Aspire không có trong production images.
 
 ---
 
 ## Kiến trúc in vé nhiệt
 
-Đơn hàng được phân tích loại món trước khi lưu, sau đó một `PrintEvent` được gửi qua SignalR:
-- Món gắn nhãn **đồ ăn** → `PrintEvent` đến nhóm SignalR `kitchen`
-- Món gắn nhãn **đồ uống** → `PrintEvent` đến nhóm SignalR `bar`
+Khi đơn hàng được xác nhận, backend phân loại món theo `item_type` và gửi sự kiện SignalR đến nhóm theo nhà hàng:
+- Đồ ăn → `KitchenPrintEvent` → nhóm `restaurant-{restaurantId}-kitchen`
+- Đồ uống → `BarPrintEvent` → nhóm `restaurant-{restaurantId}-bar`
 
-Một **phần mềm client in** (daemon nhẹ) chạy tại chỗ ở mỗi nhà hàng:
+### Phần mềm client in (.NET 10 Worker Service)
+
+Mỗi nhà hàng có một **phần mềm client in** chạy tại chỗ. Agent đăng ký **cả hai** nhóm SignalR và định tuyến nội bộ theo loại sự kiện.
 
 ```
 SignalR Hub (Civo VM)
-  └─► Print Client Agent (PC nội bộ nhà hàng)
-        ├── Máy in nhiệt bếp — đồ ăn (ESC/POS qua USB/LAN)
-        └── Máy in nhiệt quầy bar — đồ uống (ESC/POS qua USB/LAN)
+  └─► Print Client Agent (PC nội bộ nhà hàng — .NET 10 Worker Service .exe)
+        ├── Epson TM-T82III — Máy in bếp (HTTP POST qua ePOS-Print XML)
+        └── Epson TM-T82III — Máy in bar  (HTTP POST qua ePOS-Print XML)
+```
+
+In được gửi qua **ePOS-Print XML** over HTTP đến IP nội bộ của từng máy in:
+
+```
+POST http://{printerIp}/cgi-bin/epos/service.cgi
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://www.epson-pos.com/schemas/2011/03/epos-print"
+```
+
+Cấu hình agent (`appsettings.json`):
+
+```json
+{
+  "PrintAgent": {
+    "BackendUrl": "https://api.example.com",
+    "RestaurantId": "<uuid>",
+    "DeviceToken": "<token-do-chủ-nhà-hàng-tạo>",
+    "KitchenPrinterIp": "192.168.1.101",
+    "BarPrinterIp": "192.168.1.102"
+  }
+}
 ```
 
 | Vấn đề | Cách xử lý |
 |--------|------------|
-| Giao thức máy in | ESC/POS (chuẩn công nghiệp cho máy in nhiệt) |
-| Phân tách | Mỗi máy in đăng ký nhóm SignalR riêng (`kitchen` vs `bar`) |
+| Model máy in | Epson TM-T82III |
+| Giao thức in | ePOS-Print XML over HTTP (độc quyền Epson) |
+| Định tuyến | Một agent mỗi nhà hàng; định tuyến theo loại sự kiện đến đúng IP máy in |
+| Xác thực | `DeviceToken` trong header kết nối SignalR, được chủ nhà hàng tạo trong Owner Dashboard |
+| Xử lý lỗi | Fire-and-forget — lỗi in kích hoạt sự kiện `PrintFailed` → cảnh báo trên Staff Dashboard |
+| Cấu hình IP | IP tĩnh trong `appsettings.json` (cấu hình local, không lưu trong backend) |
 | Xử lý lỗi | Máy in offline kích hoạt sự kiện `PrintFailed` → cảnh báo trên Dashboard nhân viên |
 | Nội dung vé | Số bàn, số đơn, món + số lượng + ghi chú, thời gian |
 

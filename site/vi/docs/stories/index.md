@@ -33,6 +33,7 @@
 | Civo Prod VM cài blue-green | Cả hai stack (blue/green) có thể khởi động; Nginx upstream switch hoạt động | 🔲 Kế hoạch |
 | GitHub Actions: workflow deploy-dev | Push lên `dev` → SSH deploy → ứng dụng truy cập được trên Dev VM | 🔲 Kế hoạch |
 | GitHub Actions: workflow deploy-prod | Push lên `main` → blue-green deploy → xác nhận không có downtime | 🔲 Kế hoạch |
+| Thiết lập .NET Aspire AppHost cho dev local | Project AppHost tham chiếu API + local Supabase container; `dotnet run --project AppHost` khởi động toàn bộ dev stack; chỉ dùng khi dev, không có trong production images | 🔲 Kế hoạch |
 
 ---
 
@@ -117,7 +118,9 @@
 | Đồ ăn tự in lên máy in bếp | Khi đặt đơn, đồ ăn định tuyến đến máy in nhiệt bếp; vé in hiển thị số bàn, số đơn, món, số lượng, ghi chú |
 | Đồ uống tự in lên máy in bar | Khi đặt đơn, đồ uống định tuyến đến máy in nhiệt quầy bar; cùng định dạng vé |
 | Đơn hỗn hợp in trên cả hai máy | Đơn có cả đồ ăn lẫn đồ uống kích hoạt cả hai máy in độc lập |
-| Cài đặt phần mềm client in | Agent cài trên PC địa phương nhà hàng; xác thực đến SignalR hub bằng thông tin đăng nhập nhà hàng |
+| Cài đặt phần mềm client in | File `.exe` tự-chứa cài trên PC địa phương nhà hàng; kết nối đến SignalR hub qua `DeviceToken` trong connection header |
+| Chủ nhà hàng tạo device token | Owner Dashboard tạo `DeviceToken` một lần cho Print Agent; token lưu trong backend và dùng để xác thực agent |
+| Cấu hình agent qua `appsettings.json` | Config agent bao gồm `RestaurantId`, `DeviceToken`, `KitchenPrinterIp`, `BarPrinterIp`; IP tĩnh do chủ nhà hàng cấu hình |
 | Cảnh báo nhân viên khi lỗi in | Nếu máy in offline, Dashboard nhân viên hiển thị cảnh báo kèm chi tiết đơn bị ảnh hưởng |
 
 ---

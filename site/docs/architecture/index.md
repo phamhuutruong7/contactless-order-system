@@ -14,7 +14,7 @@
                │ SPA assets             │ API / WebSocket
       ┌────────▼──────────┐    ┌────────▼──────────────────────────┐
       │    VERCEL CDN      │    │       CIVO COMPUTE VM              │
-      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 8 · SignalR    │
+      │ Vue 3 + Vuetify    │    │  Nginx (TLS) · .NET 10 · SignalR   │
       └────────────────────┘    └────────┬───────────────────────────┘
                                           │
                               ┌───────────▼────────────────────────┐
@@ -41,13 +41,21 @@
 
 The single Vuetify SPA is deployed on **Vercel**. It renders different views based on user role: guests access it anonymously via QR scan, while staff, owners, and admins authenticate before reaching their respective dashboards.
 
-### Backend API (.NET 8)
+### Backend API (.NET 10 — Clean Architecture)
 
-- **Minimal API** endpoints grouped by domain: `auth`, `restaurants`, `menus`, `tables`, `orders`
+Structured following [Jason Taylor's Clean Architecture template](https://github.com/jasontaylordev/CleanArchitecture):
+
+| Layer | Responsibilities |
+|-------|------------------|
+| **Domain** | Entities (`Order`, `MenuItem`, `Restaurant`, `Table`), Domain Events |
+| **Application** | CQRS Commands/Queries (MediatR), Interfaces, DTOs, FluentValidation |
+| **Infrastructure** | EF Core + Npgsql, SignalR hub implementation, ePOS-Print HTTP adapter |
+| **Api** | ASP.NET Core Web API — controllers or minimal endpoints; JWT middleware |
+
 - JWT validation on all protected routes (Supabase-issued tokens)
 - PIN-based staff auth returns a scoped short-lived JWT
 - Multi-tenancy enforced: every query includes `restaurant_id` scope
-- No ORM — raw SQL via Npgsql or Dapper for performance transparency
+- **ORM**: EF Core 10 with Npgsql provider; migrations in `Infrastructure/Persistence/Migrations/`
 
 ### Real-Time (SignalR)
 
@@ -96,31 +104,78 @@ Nginx upstream
 
 ```yaml
 services:
-  api:    # .NET 8 API + SignalR Hub (co-hosted)
+  api:    # .NET 10 API + SignalR Hub (co-hosted)
   # Frontend is deployed to Vercel — not part of this Docker Compose
 ```
+
+### Development Environment (.NET Aspire)
+
+.NET Aspire is used **for local development only** — not deployed to production.
+
+| Component | Role |
+|-----------|------|
+| **AppHost** project | Orchestrates API project + local Supabase container stack |
+| **ServiceDefaults** project | OpenTelemetry traces/metrics, health checks, service discovery |
+| Supabase local container | Full self-hosted Supabase stack (PostgreSQL + GoTrue Auth + Storage) |
+
+```csharp
+// AppHost Program.cs (dev only)
+var supabase = builder.AddContainer("supabase", "supabase/postgres");
+var api = builder.AddProject<Projects.Api>("api")
+                 .WithReference(supabase);
+```
+
+> Production uses Docker Compose blue-green (unchanged). Aspire is not present in production images.
 
 ---
 
 ## Thermal Print Architecture
 
-Orders are analysed for item type before being persisted, then a `PrintEvent` is dispatched via SignalR:
-- Items tagged **food** → `PrintEvent` to `kitchen` SignalR group
-- Items tagged **drink** → `PrintEvent` to `bar` SignalR group
+When an order is confirmed, the backend splits items by `item_type` and dispatches SignalR events to restaurant-scoped groups:
+- Food items → `KitchenPrintEvent` → group `restaurant-{restaurantId}-kitchen`
+- Drink items → `BarPrintEvent` → group `restaurant-{restaurantId}-bar`
 
-A **Print Client Agent** (lightweight daemon) runs on-premises at each restaurant:
+### Print Client Agent (.NET 10 Worker Service)
+
+One **Print Client Agent** per restaurant runs on-premises. It subscribes to **both** SignalR groups and routes internally based on event type.
 
 ```
 SignalR Hub (Civo VM)
-  └─► Print Client Agent (restaurant local PC)
-        ├── Kitchen Thermal Printer — food items (ESC/POS over USB/LAN)
-        └── Bar Thermal Printer    — drink items (ESC/POS over USB/LAN)
+  └─► Print Client Agent (restaurant local PC — .NET 10 Worker Service .exe)
+        ├── Epson TM-T82III — Kitchen Printer (HTTP POST via ePOS-Print XML)
+        └── Epson TM-T82III — Bar Printer     (HTTP POST via ePOS-Print XML)
+```
+
+Print is sent via **ePOS-Print XML** over HTTP to each printer's local IP:
+
+```
+POST http://{printerIp}/cgi-bin/epos/service.cgi
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://www.epson-pos.com/schemas/2011/03/epos-print"
+```
+
+Agent configuration (`appsettings.json`):
+
+```json
+{
+  "PrintAgent": {
+    "BackendUrl": "https://api.example.com",
+    "RestaurantId": "<uuid>",
+    "DeviceToken": "<owner-generated-token>",
+    "KitchenPrinterIp": "192.168.1.101",
+    "BarPrinterIp": "192.168.1.102"
+  }
+}
 ```
 
 | Concern | Approach |
 |---------|----------|
-| Printer protocol | ESC/POS (industry standard thermal printers) |
-| Separation | Each printer subscribes to its own SignalR group (`kitchen` vs `bar`) |
+| Printer model | Epson TM-T82III |
+| Print protocol | ePOS-Print XML over HTTP (Epson proprietary) |
+| Routing | Single agent per restaurant; routes by event type to correct printer IP |
+| Authentication | `DeviceToken` in SignalR connection header, generated by owner in Owner Dashboard |
+| Failure handling | Fire-and-forget — failed print fires `PrintFailed` event → Staff Dashboard alert |
+| IP configuration | Static IPs in `appsettings.json` (local config, not stored in backend) |
 | Failure handling | Offline printer triggers `PrintFailed` event → Staff Dashboard alert |
 | Ticket content | Table #, Order #, items + quantities + notes, timestamp |
 
