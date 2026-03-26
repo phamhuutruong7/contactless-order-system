@@ -231,7 +231,7 @@ State transitions trigger SignalR events that push to all role-appropriate clien
 | `modifier_groups` | `id`, `item_id`, `name`, `is_required`, `min_selections`, `max_selections`, `sort_order` |
 | `modifiers` | `id`, `group_id`, `name`, `price_delta_eur_cents`, `sort_order` |
 | `tables` | `id`, `restaurant_id`, `name`, `is_active` |
-| `orders` | `id`, `restaurant_id`, `table_id`, `status`, `created_at` |
+| `orders` | `id`, `restaurant_id`, `table_id` (nullable), `order_type` (`table`/`take_away`), `status`, `created_at` |
 | `order_lines` | `id`, `order_id`, `item_id`, `quantity`, `note`, `unit_price_eur_cents` |
 | `order_line_modifiers` | `id`, `order_line_id`, `modifier_id`, `price_delta_eur_cents` |
 | `print_jobs` | `id`, `restaurant_id`, `order_id`, `printer_type` (kitchen/bar), `device_token`, `status`, `created_at`, `confirmed_at` |
@@ -244,7 +244,7 @@ State transitions trigger SignalR events that push to all role-appropriate clien
 
 ### Prerequisites
 - [.NET 10 SDK](https://dot.net)
-- [Node.js 20+](https://nodejs.org)
+- [Node.js 22 LTS](https://nodejs.org)
 - [Docker Desktop](https://docker.com)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (for local Supabase instance, optional)
 
@@ -278,6 +278,12 @@ SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_KEY=<service_role_key>
 SUPABASE_JWT_SECRET=<jwt_secret>
 SIGNALR_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+
+# Aspire local dev overrides (when running src/AppHost via dotnet run)
+SUPABASE_DB_HOST=localhost
+SUPABASE_DB_PORT=54322
+SUPABASE_AUTH_PORT=9999
+SUPABASE_DB_PASSWORD=postgres
 
 # Frontend (.env.local)
 VITE_API_BASE=http://localhost:5000

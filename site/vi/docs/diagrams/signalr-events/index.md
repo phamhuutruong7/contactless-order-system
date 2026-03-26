@@ -16,8 +16,9 @@ graph TD
 
   RG --> |"đăng ký"| OWNER["Trình Duyệt Chủ Nhà Hàng"]
   RG --> |"đăng ký"| STAFF_ALL["Toàn Bộ Nhân Viên Nhà Hàng"]
+  RG --> |"đăng ký (take-away)"| GUEST_TA["Khách Take-Away"]
   FG --> |"đăng ký"| STAFF_ONE["Máy Tính Bảng Nhân Viên"]
-  TG --> |"đăng ký"| GUEST["Khách Tại Bàn"]
+  TG --> |"đăng ký"| GUEST["Khách Ăn Tại Bàn"]
 ```
 
 ---
@@ -35,8 +36,9 @@ graph TD
   event: 'OrderReceived',
   payload: {
     orderId: string,
-    tableId: string,
-    tableLabel: string,
+    orderType: 'table' | 'take_away',
+    tableId: string | null,
+    tableLabel: string | null,
     items: [{ name, quantity, modifiers, specialInstructions }],
     total: number,
     createdAt: string
@@ -52,7 +54,7 @@ graph TD
 ### 2.2 `OrderStatusChanged`
 
 **Chiều:** Máy chủ → Máy khách  
-**Nhóm:** `restaurant:{restaurantId}` + `table:{restaurantId}:{tableId}`  
+**Nhóm:** `restaurant:{restaurantId}` + `table:{restaurantId}:{tableId}` (ăn tại chỗ) / chỉ `restaurant:{restaurantId}` (take-away)  
 **Kích hoạt bởi:** `PATCH /api/orders/{id}/status`
 
 ```typescript
@@ -60,14 +62,15 @@ graph TD
   event: 'OrderStatusChanged',
   payload: {
     orderId: string,
-    tableId: string,
+    orderType: 'table' | 'take_away',
+    tableId: string | null,
     status: 'received' | 'preparing' | 'ready' | 'served' | 'cancelled',
     updatedAt: string
   }
 }
 ```
 
-**Người nhận:** Nhân viên (nhóm nhà hàng) + Khách (nhóm bàn)  
+**Người nhận:** Nhân viên (nhóm nhà hàng) + Khách ăn tại chỗ (nhóm bàn); khách take-away nhận qua nhóm nhà hàng  
 **Tác động:**
 - Thanh tiến trình của khách cập nhật trạng thái
 - Thẻ đơn hàng trên màn hình nhân viên cập nhật chip trạng thái
@@ -167,7 +170,8 @@ Tất cả ba transport đều dùng chung mô hình sự kiện và nhóm.
 
 | Vai Trò JWT | Nhóm Được Tham Gia | Sự Kiện Nhận Được |
 |------------|-------------------|-------------------|
-| `guest` | Chỉ `table:{restaurant}:{table}` | `OrderStatusChanged` |
+| `guest` (ăn tại chỗ) | Chỉ `table:{restaurant}:{table}` | `OrderStatusChanged` |
+| `guest` (take-away) | Chỉ `restaurant:{restaurant}` | `OrderStatusChanged` |
 | `staff` | `restaurant:{restaurant}` + `floor:{restaurant}:{staff}` | `OrderReceived`, `OrderStatusChanged`, `PrintFailed`, `MenuItemAvailabilityChanged` |
 | `owner` | `restaurant:{restaurant}` | Tất cả sự kiện |
 | `admin` | Không có (Admin không có UI thời gian thực) | — |

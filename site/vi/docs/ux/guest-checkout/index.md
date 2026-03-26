@@ -21,7 +21,7 @@ Màn hình xác nhận trung gian giữa Giỏ Hàng và Trạng Thái Đơn Hà
 | `v-chip` (outlined) | Nhãn loại món: Đồ ăn / Đồ uống |
 | `v-divider` | Phân cách dòng với tổng tiền |
 | `v-list-item` (tóm tắt) | Tổng phụ, Phí dịch vụ, Tổng cộng |
-| `v-card` (outlined) | Thông tin bàn |
+| `v-card` (outlined) | Thông tin loại đơn — số bàn (ăn tại chỗ) hoặc huy hiệu Mang Đi |
 | `v-icon` + text | Số bàn + chỉ báo quét QR |
 | `v-btn` (block, large, primary) | CTA "Xác Nhận & Đặt Hàng" |
 | `v-btn` (text) | Hành động phụ "← Sửa Giỏ Hàng" |
@@ -37,7 +37,8 @@ Màn hình xác nhận trung gian giữa Giỏ Hàng và Trạng Thái Đơn Hà
 │ [←] Xác Nhận Đơn Hàng         │  ← v-app-bar
 ├────────────────────────────────┤
 │  ┌──────────────────────────┐  │
-│  │ 📍 Bàn 5                 │  │  ← card outlined (thông tin bàn)
+│  │ 📍 Bàn 5                 │  │  ← ăn tại chỗ: hiển số bàn
+│  │ 🛍 Mang Đi             │  │  ← mang đi: huy hiệu (có điều kiện)
 │  └──────────────────────────┘  │
 │                                │
 │  Đơn Hàng Của Bạn              │  ← v-card-title
@@ -95,7 +96,7 @@ Màn hình xác nhận trung gian giữa Giỏ Hàng và Trạng Thái Đơn Hà
 // Đọc từ useCartStore — không gọi API cho đến khi nhấn xác nhận
 
 POST /api/orders
-Body: { restaurantId, tableId, lines: [...] }
+Body: { restaurantId, orderType: 'table' | 'take_away', tableId?: string, lines: [...] }
 Response: { orderId: string, status: 'pending' }
 
 // Khi thành công:
@@ -110,7 +111,7 @@ useCartStore().clear()
 Từ **E1 — Luồng Đặt Món Khách**:
 
 - [ ] Màn hình xác nhận chỉ đọc; không thể chỉnh sửa từ đây
-- [ ] Thông tin bàn được hiển thị rõ ràng
+- [ ] Loại đơn hiển thị rõ ràng (số bàn cho ăn tại chỗ, huy hiệu “Mang Đi” cho mang đi)
 - [ ] Đồ ăn và đồ uống được phân biệt rõ ràng bằng nhãn chip
 - [ ] Một lần nhấn xác nhận và gửi đơn hàng
 - [ ] Khi thành công, khách được chuyển ngay đến trang trạng thái đơn

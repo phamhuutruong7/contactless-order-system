@@ -115,3 +115,17 @@
 - Nhân viên có thể xác nhận: nếu mã QR cũ bị thay thế vật lý, khách với JWT còn hợp lệ vẫn xem được trạng thái đơn hàng nhưng không thể đặt thêm (checkout xác thực `tableId` vẫn còn hoạt động, không phải token)
 
 **Hành động của chủ:** Nếu bàn ngừng hoạt động giữa ca, `PATCH /api/tables/{id} { isActive: false }` khiến `POST /api/orders` trả về `410 Gone`.
+
+---
+
+## 9. Khách Đổi Loại Đơn Sau Khi Đã Thêm Món Vào Giỏ Hàng
+
+**Tình huống:** Khách chọn “Mang Đi”, thêm món, rồi đổi lại “Ăn Tại Chỗ” (hoặc ngược lại) sau khi giỏ hàng không rỗng.
+
+**Xử lý:**
+- Toggle loại đơn (`v-btn-toggle`) kích hoạt hộp xác nhận: *“Đổi loại đơn sẽ xóa thông tin bàn/mang đi. Các món đã chọn sẽ được giữ nguyên.”*
+- `tableId` được đặt thành `null` khi đổi sang Mang Đi; trường số bàn ẩn
+- Khi đổi lại sang Ăn Tại Chỗ, trường số bàn hiện lại (pre-filled nếu đã quét mã QR)
+- Các món trong giỏ hàng **không bị xóa** — chỉ ngữ cảnh giao hàng thay đổi
+- `POST /api/orders` kiểm tra: nếu `orderType = 'table'` thì `tableId` phải có và đang hoạt động; nếu `orderType = 'take_away'` thì `tableId` phải vắng mặt — trả về `422` nếu không đúng
+- Không cần sự kiện SignalR; việc đổi loại chỉ xảy ra phía client cho đến khi gửi đơn

@@ -21,7 +21,8 @@ Màn hình xem lại đơn hàng trước khi xác nhận. Hiển thị tất c�
 | `v-btn` (icon, danger) | Nút xóa dòng (icon thùng rác) |
 | `v-slide-x-transition` | Hiệu ứng xóa dòng |
 | `v-divider` | Phân cách giữa các dòng |
-| `v-card` + `v-card-text` | Panel xác nhận bàn |
+| `v-btn-toggle` | Chọn loại đơn: "🍽 Ăn Tại Chỗ" / "🛍 Mang Đi" |
+| `v-card` + `v-card-text` | Panel xác nhận bàn (hiện chỉ khi orderType = table) |
 | `v-select` | Dropdown chọn bàn (populated từ session) |
 | `v-text-field` (readonly) | Hiển thị bàn đã được ghi nhận từ QR code |
 | `v-summary-row` (custom) | Tóm tắt tiền: Tổng phụ, Phí dịch vụ, Tổng cộng |
@@ -37,7 +38,8 @@ Màn hình xem lại đơn hàng trước khi xác nhận. Hiển thị tất c�
 ┌────────────────────────────────┐
 │ [←] Giỏ Hàng (3 món)          │  ← v-app-bar
 ├────────────────────────────────┤
-│ Bàn: Bàn 5 (từ mã QR)         │  ← v-text-field readonly
+│ [🍽 Ăn Tại Chỗ]  [🛍 Mang Đi]   │  ← v-btn-toggle
+│ Bàn: Bàn 5 (từ mã QR)         │  ← v-text-field readonly (ẩn khi Mang Đi)
 │ ─────────────────────────      │
 │  [🍔] Burger               x2  │
 │       Lớn, Phô mai thêm        │  ← v-list-item (bổ sung được chọn)
@@ -87,7 +89,8 @@ Màn hình xem lại đơn hàng trước khi xác nhận. Hiển thị tất c�
 | Nhấn [−] / [+] số lượng | Cập nhật số lượng trong cart store; tổng tiền tính lại |
 | Số lượng về 0 | Tự động xóa dòng (có hiệu ứng slide-out) |
 | Nhấn icon thùng rác | Hiển thị dialog xác nhận xóa dòng nhỏ |
-| Nhấn "Đặt Hàng" | Hiển thị `v-dialog` tóm tắt xác nhận (bàn + số lượng món + tổng) |
+| Đổi loại đơn hàng | Nếu có món trong giỏ, `v-dialog` cảnh báo "Chuyển sang Mang Đi sẽ xóa lựa chọn bàn. Tiếp tục?"; xác nhận → xóa `tableId` khỏi store |
+| Nhấn "Đặt Hàng" | Hiển thị `v-dialog` tóm tắt xác nhận (loại đơn + số lượng món + tổng) |
 | Xác nhận trong dialog | POST `/api/orders` với cart data + tableId |
 | Hủy trong dialog | Đóng dialog; quay lại giỏ hàng |
 
@@ -99,7 +102,8 @@ Màn hình xem lại đơn hàng trước khi xác nhận. Hiển thị tất c�
 // useCartStore (Pinia)
 interface Cart {
   restaurantId: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId?: string
   items: CartItem[]
 }
 
@@ -107,7 +111,8 @@ interface Cart {
 POST /api/orders
 Body: {
   restaurantId: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId?: string
   lines: [{
     itemId: string
     quantity: number
@@ -129,3 +134,6 @@ Từ **E1 — Luồng Đặt Món Khách**:
 - [ ] Dialog xác nhận hiển thị trước khi gửi đơn hàng
 - [ ] Sau khi đặt thành công, giỏ hàng được làm trống
 - [ ] Khi gửi thất bại, thông báo lỗi rõ ràng + có nút Thử Lại
+- [ ] Khách có thể chuyển đổi giữa Ăn Tại Chỗ và Mang Đi
+- [ ] Panel bàn ẩn khi chọn Mang Đi
+- [ ] Đơn Mang Đi gửi thành công mà không cần tableId

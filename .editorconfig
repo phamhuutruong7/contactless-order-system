@@ -1,0 +1,32 @@
+# EditorConfig — root configuration
+# https://editorconfig.org
+root = true
+
+# ── Universal defaults ───────────────────────────────────────────────────────
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# ── C# ───────────────────────────────────────────────────────────────────────
+[*.cs]
+indent_size = 4
+
+# ── Markdown (preserve trailing spaces — intentional line breaks) ─────────────
+[*.md]
+trim_trailing_whitespace = false
+
+# ── YAML ─────────────────────────────────────────────────────────────────────
+[*.{yml,yaml}]
+indent_size = 2
+
+# ── JSON ─────────────────────────────────────────────────────────────────────
+[*.json]
+indent_size = 2
+
+# ── Shell / cmd ───────────────────────────────────────────────────────────────
+[*.{sh,bat,ps1}]
+end_of_line = lf

@@ -16,8 +16,9 @@ graph TD
 
   RG --> |"subscribes"| OWNER["Owner Browser"]
   RG --> |"subscribes"| STAFF_ALL["All Staff of Restaurant"]
+  RG --> |"subscribes (take-away)"| GUEST_TA["Take-Away Guest"]
   FG --> |"subscribes"| STAFF_ONE["Individual Staff Tablet"]
-  TG --> |"subscribes"| GUEST["Guest at Table"]
+  TG --> |"subscribes"| GUEST["Dine-In Guest at Table"]
 ```
 
 ---
@@ -35,8 +36,9 @@ graph TD
   event: 'OrderReceived',
   payload: {
     orderId: string,
-    tableId: string,
-    tableLabel: string,
+    orderType: 'table' | 'take_away',
+    tableId: string | null,
+    tableLabel: string | null,
     items: [{ name, quantity, modifiers, specialInstructions }],
     total: number,
     createdAt: string
@@ -52,7 +54,7 @@ graph TD
 ### 2.2 `OrderStatusChanged`
 
 **Direction:** Server → Client  
-**Groups:** `restaurant:{restaurantId}` + `table:{restaurantId}:{tableId}`  
+**Groups:** `restaurant:{restaurantId}` + `table:{restaurantId}:{tableId}` (dine-in) / `restaurant:{restaurantId}` only (take-away)  
 **Triggered by:** `PATCH /api/orders/{id}/status`
 
 ```typescript
@@ -60,7 +62,8 @@ graph TD
   event: 'OrderStatusChanged',
   payload: {
     orderId: string,
-    tableId: string,
+    orderType: 'table' | 'take_away',
+    tableId: string | null,
     status: 'received' | 'preparing' | 'ready' | 'served' | 'cancelled',
     updatedAt: string
   }
@@ -167,7 +170,8 @@ All three share the same event model and group membership semantics.
 
 | JWT Role | Can join group | Can receive events |
 |----------|---------------|-------------------|
-| `guest` | `table:{restaurant}:{table}` only | `OrderStatusChanged` |
+| `guest` (dine-in) | `table:{restaurant}:{table}` only | `OrderStatusChanged` |
+| `guest` (take-away) | `restaurant:{restaurant}` only | `OrderStatusChanged` |
 | `staff` | `restaurant:{restaurant}` + `floor:{restaurant}:{staff}` | `OrderReceived`, `OrderStatusChanged`, `PrintFailed`, `MenuItemAvailabilityChanged` |
 | `owner` | `restaurant:{restaurant}` | All events |
 | `admin` | None (admin has no real-time UI) | — |

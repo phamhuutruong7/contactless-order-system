@@ -115,3 +115,17 @@
 - Staff can confirm coverage: if old QR is physically replaced, previous guests with active JWTs can still view order status but cannot place new orders (cart checkout validates `tableId` is still active, not the token)
 
 **Owner action:** If a table is decommissioned mid-session, `PATCH /api/tables/{id} { isActive: false }` causes `POST /api/orders` to return `410 Gone`.
+
+---
+
+## 9. Guest Switches Order Type After Adding Items to Cart
+
+**Scenario:** A guest selects "Take Away", adds items, then switches back to "Table" (or vice versa) after the cart is non-empty.
+
+**Handling:**
+- The order-type toggle (`v-btn-toggle`) triggers a confirmation dialog: *"Switching order type will clear the table/take-away info. Your items remain in the cart."*
+- `tableId` is set to `null` when switching to Take Away; the table-number field is hidden
+- Switching back to Table re-shows the table-number field (pre-filled if scanned from QR)
+- The cart items themselves are **not cleared** — only the delivery context changes
+- `POST /api/orders` validates: if `orderType = 'table'` then `tableId` must be present and active; if `orderType = 'take_away'` then `tableId` must be absent — returns `422` on mismatch
+- No SignalR event is needed; the type switch is client-side only until submission

@@ -21,7 +21,7 @@ Màn hình theo dõi đơn hàng theo thời gian thực. Khách được chuy�
 | `v-card` | Panel tóm tắt đơn hàng (mã đơn, bàn, món) |
 | `v-list` + `v-list-item` | Danh sách món chỉ đọc để tham khảo |
 | `v-chip` | Huy hiệu trạng thái hiện tại (màu theo trạng thái) |
-| `v-alert type="success"` | "Đơn hàng của bạn đã sẵn sàng! Nhân viên sẽ mang đến cho bạn" — hiện khi Ready |
+| `v-alert type="success"` | "Đơn hàng của bạn đã sẵn sàng!" — ăn tại chỗ: "Nhân viên sẽ mang đến bàn"; mang đi: "Vui lòng nhận đơn tại quầy" — hiện khi Ready |
 | `v-alert type="warning"` | Banner lỗi in (nếu nhận sự kiện SignalR `PrintFailed`) |
 | `v-btn` | "Gọi Thêm" — điều hướng về menu giữ nguyên phiên |
 | `v-progress-circular` | Spinner trong khi tải trạng thái ban đầu |
@@ -35,7 +35,7 @@ Màn hình theo dõi đơn hàng theo thời gian thực. Khách được chuy�
 │ Tên Nhà Hàng · Trạng Thái ĐH  │  ← v-app-bar
 ├────────────────────────────────┤
 │                                │
-│  Đơn #A1B2 · Bàn 5             │  ← v-card header
+│  Đơn #A1B2 · Bàn 5             │  ← v-card header (ăn tại chỗ) / "Đơn #A1B2 · Mang Đi" (mang đi)
 │  ─────────────────────────     │
 │  ● Chờ Xử Lý    12:01          │  ← v-stepper-item (hoàn thành)
 │  ● Đã Nhận      12:01          │  ← hoàn thành
@@ -76,7 +76,7 @@ Màn hình theo dõi đơn hàng theo thời gian thực. Khách được chuy�
 
 ### 4.5 Sẵn Sàng (Ready)
 - Bước 1–3 tích; bước 4 đang hoạt động
-- `v-alert type="success"` — "Đơn hàng của bạn đã sẵn sàng!"
+- `v-alert type="success"` — "Đơn hàng của bạn đã sẵn sàng!" (ăn tại chỗ: "Nhân viên sẽ mang đến bàn"; mang đi: "Vui lòng nhận đơn tại quầy")
 - Chip chuyển sang xanh lá
 
 ### 4.6 Đã Phục Vụ (Served)
@@ -101,7 +101,7 @@ Màn hình theo dõi đơn hàng theo thời gian thực. Khách được chuy�
 | Tải trang | `GET /api/orders/{orderId}` → thiết lập trạng thái ban đầu |
 | SignalR `OrderStatusChanged` | Cập nhật stepper ngay lập tức (không tải lại) |
 | SignalR `PrintFailed` | Hiện cảnh báo |
-| Nhấn "Gọi Thêm" | Điều hướng đến `/menu/{restaurantId}` giữ nguyên `tableId` |
+| Nhấn "Gọi Thêm" | Điều hướng đến `/menu/{restaurantId}` giữ nguyên `tableId` (ăn tại chỗ) hoặc không có tableId (mang đi) |
 | Làm mới trang | Kết nối lại SignalR + tải lại trạng thái hiện tại |
 
 ---
@@ -115,7 +115,7 @@ const connection = new HubConnectionBuilder()
   .withAutomaticReconnect()
   .build()
 
-connection.on('OrderStatusChanged', (payload: { orderId, status, timestamp }) => {
+connection.on('OrderStatusChanged', (payload: { orderId: string, orderType: 'table' | 'take_away', tableId: string | null, status: string, timestamp: string }) => {
   if (payload.orderId === currentOrderId) {
     orderStatus.value = payload.status
     statusHistory.value.push({ status: payload.status, at: payload.timestamp })
@@ -138,7 +138,8 @@ connection.invoke('JoinRestaurant', restaurantId)
 GET /api/orders/{orderId}
 Response: {
   id: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId: string | null
   status: 'pending' | 'received' | 'preparing' | 'ready' | 'served' | 'cancelled'
   lines: [{ itemName, quantity, unitPriceEurCents, modifierSummary }]
   statusHistory: [{ status, occurredAt }]
@@ -157,3 +158,5 @@ Từ **E1 — Luồng Đặt Hàng Khách**:
 - [ ] Lỗi in không làm chặn khách xem trạng thái đơn hàng
 - [ ] Khách có thể quay lại menu và đặt thêm từ màn hình này
 - [ ] SignalR tự động kết nối lại nếu mất kết nối
+- [ ] Thông báo “Sẵn Sàng” hướng khách ăn tại chỗ chờ tại bàn và khách mang đi nhận tại quầy
+- [ ] Tiêu đề đơn hiển số bàn (ăn tại chỗ) hoặc nhãn “Mang Đi” (mang đi)

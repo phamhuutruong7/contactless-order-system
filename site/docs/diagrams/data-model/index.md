@@ -91,7 +91,8 @@ erDiagram
   orders {
     uuid id PK
     uuid restaurant_id FK
-    uuid table_id FK
+    uuid table_id FK "nullable for take-away"
+    string order_type "table | take_away"
     string status
     int total_pence
     timestamp created_at
@@ -129,7 +130,7 @@ erDiagram
   categories ||--o{ items : "lists"
   items ||--o{ modifier_groups : "has"
   modifier_groups ||--o{ modifiers : "contains"
-  tables ||--o{ orders : "generates"
+  tables ||--o{ orders : "dine-in only"
   orders ||--o{ order_lines : "contains"
   items ||--o{ order_lines : "referenced by"
 ```
@@ -158,6 +159,10 @@ erDiagram
 
 ### 2.5 Price storage
 All prices stored as integer pence (or whole currency units in VND context). No floating-point arithmetic in the database or API.
+
+### 2.6 `order_type` validation
+- `table` — `table_id` must be NOT NULL; validated server-side; 422 returned if missing
+- `take_away` — `table_id` must be NULL; 422 returned if a `tableId` is supplied
 
 ---
 

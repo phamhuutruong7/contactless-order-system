@@ -21,7 +21,7 @@ Intermediate confirmation screen between Cart and Order Status. Presents a final
 | `v-chip` (outlined) | Item type tag: Food / Drink |
 | `v-divider` | Separates lines from totals |
 | `v-list-item` (summary) | Subtotal, Service Fee, Total rows |
-| `v-card` (outlined) | Table info card |
+| `v-card` (outlined) | Order type info — table number (dine-in) or Take Away badge (take-away) |
 | `v-icon` + text | Table number + QR scan indicator |
 | `v-btn` (block, large, primary) | "Confirm & Place Order" CTA |
 | `v-btn` (text) | "← Edit Cart" secondary action |
@@ -37,7 +37,8 @@ Intermediate confirmation screen between Cart and Order Status. Presents a final
 │ [←] Confirm Order              │  ← v-app-bar
 ├────────────────────────────────┤
 │  ┌──────────────────────────┐  │
-│  │ 📍 Table 5               │  │  ← outlined card (table info)
+│  │ 📍 Table 5               │  │  ← dine-in: table number
+│  │ 🛍 Take Away             │  │  ← take-away: badge (conditional)
 │  └──────────────────────────┘  │
 │                                │
 │  Your Order                    │  ← v-card-title
@@ -95,7 +96,7 @@ Intermediate confirmation screen between Cart and Order Status. Presents a final
 // Read from useCartStore — no API call on this screen until submit
 
 POST /api/orders
-Body: { restaurantId, tableId, lines: [...] }
+Body: { restaurantId, orderType: 'table' | 'take_away', tableId?: string, lines: [...] }
 Response: { orderId: string, status: 'pending' }
 
 // On success:
@@ -110,7 +111,7 @@ useCartStore().clear()
 From **E1 — Guest Ordering Flow**:
 
 - [ ] Checkout screen is read-only; guest cannot edit from here
-- [ ] Table information is clearly displayed
+- [ ] Order type clearly displayed (table number for dine-in, "Take Away" badge for take-away)
 - [ ] Food vs drink items are visually distinguishable
 - [ ] One tap confirms and submits the order
 - [ ] On success, guest is immediately taken to order status

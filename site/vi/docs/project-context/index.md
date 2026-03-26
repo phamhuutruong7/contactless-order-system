@@ -208,7 +208,7 @@ Chờ → Đã nhận → Đang chuẩn bị → Sẵn sàng → Đã phục v�
 | `modifier_groups` | `id`, `item_id`, `name`, `is_required`, `min_selections`, `max_selections` |
 | `modifiers` | `id`, `group_id`, `name`, `price_delta_eur_cents` |
 | `tables` | `id`, `restaurant_id`, `name`, `is_active` |
-| `orders` | `id`, `restaurant_id`, `table_id`, `status`, `created_at` |
+| `orders` | `id`, `restaurant_id`, `table_id` (nullable), `order_type` (`table`/`take_away`), `status`, `created_at` |
 | `order_lines` | `id`, `order_id`, `item_id`, `quantity`, `note`, `unit_price_eur_cents` |
 | `print_jobs` | `id`, `restaurant_id`, `order_id`, `printer_type`, `device_token`, `status` |
 | `staff` | `id`, `restaurant_id`, `name`, `pin_hash`, `is_active` |
@@ -219,7 +219,7 @@ Chờ → Đã nhận → Đang chuẩn bị → Sẵn sàng → Đã phục v�
 
 ### Yêu Cầu
 - [.NET 10 SDK](https://dot.net)
-- [Node.js 20+](https://nodejs.org)
+- [Node.js 22 LTS](https://nodejs.org)
 - [Docker Desktop](https://docker.com)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (tùy chọn)
 

@@ -21,7 +21,8 @@ Order review screen before confirmation. Shows all selected items, allows quanti
 | `v-btn` (icon, danger) | Remove line button (trash icon) |
 | `v-slide-x-transition` | Animate line removal |
 | `v-divider` | Separates each line |
-| `v-card` + `v-card-text` | Table confirmation panel |
+| `v-btn-toggle` | Order type selector: "🍽 Table" / "🛍 Take Away" |
+| `v-card` + `v-card-text` | Table confirmation panel (shown only when orderType = table) |
 | `v-text-field` (readonly) | Table pre-filled from QR session |
 | `v-list-item` (summary rows) | Subtotal, Service Fee, Total |
 | `v-btn` (block, primary) | "Place Order" CTA |
@@ -37,7 +38,8 @@ Order review screen before confirmation. Shows all selected items, allows quanti
 ┌────────────────────────────────┐
 │ [←] Cart (3 items)             │  ← v-app-bar
 ├────────────────────────────────┤
-│ Table: Table 5 (from QR)       │  ← readonly v-text-field
+│ [🍽 Table]  [🛍 Take Away]     │  ← v-btn-toggle
+│ Table: Table 5 (from QR)       │  ← readonly v-text-field (hidden for take-away)
 │ ─────────────────────────      │
 │  [🍔] Burger              x2   │
 │       Large, Extra cheese      │  ← modifier summary
@@ -87,7 +89,8 @@ Order review screen before confirmation. Shows all selected items, allows quanti
 | Tap [−] / [+] quantity | Updates cart store; totals recalculate |
 | Quantity reaches 0 | Line auto-removes with slide-out animation |
 | Tap trash icon | Mini confirmation: "Remove item?" → confirm removes line |
-| Tap "Place Order" | Shows `v-dialog` summary (table, item count, total) |
+| Switch order type | If items in cart, `v-dialog` warns "Switching to Take Away will clear your table selection. Continue?"; confirms → clears `tableId` from store |
+| Tap "Place Order" | Shows `v-dialog` summary (order type, item count, total) |
 | Confirm in dialog | `POST /api/orders` with cart payload |
 | Cancel in dialog | Close dialog; return to cart view |
 
@@ -99,7 +102,8 @@ Order review screen before confirmation. Shows all selected items, allows quanti
 // useCartStore (Pinia)
 interface Cart {
   restaurantId: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId?: string
   items: CartItem[]
 }
 
@@ -107,7 +111,8 @@ interface Cart {
 POST /api/orders
 Body: {
   restaurantId: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId?: string
   lines: [{
     itemId: string
     quantity: number
@@ -129,3 +134,6 @@ From **E1 — Guest Ordering Flow**:
 - [ ] Confirmation dialog shown before order submission
 - [ ] Cart clears after successful order placement
 - [ ] Clear error feedback + Retry on submission failure
+- [ ] Guest can switch between Table and Take Away order types
+- [ ] Table panel is hidden when Take Away is selected
+- [ ] Take Away orders submit successfully without a tableId

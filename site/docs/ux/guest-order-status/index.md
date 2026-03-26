@@ -21,7 +21,7 @@ Real-time order tracking screen. Guests land here immediately after placing an o
 | `v-card` | Order summary panel (order ID, table, items) |
 | `v-list` + `v-list-item` | Read-only line items for reference |
 | `v-chip` | Current state badge (colour-coded) |
-| `v-alert type="success"` | "Your order is ready! A staff member will bring it to you" — shown on Ready |
+| `v-alert type="success"` | "Your order is ready!" — dine-in: "A staff member will bring it to your table"; take-away: "Please collect your order at the counter" — shown on Ready |
 | `v-alert type="warning"` | Print failure banner (if `PrintFailed` SignalR event received) |
 | `v-btn` | "Order More" — navigates back to menu keeping session |
 | `v-progress-circular` | Spinner during initial status fetch |
@@ -35,7 +35,7 @@ Real-time order tracking screen. Guests land here immediately after placing an o
 │ Restaurant Name · Order Status │  ← v-app-bar
 ├────────────────────────────────┤
 │                                │
-│  Order #A1B2 · Table 5         │  ← v-card header
+│  Order #A1B2 · Table 5         │  ← v-card header (dine-in) / "Order #A1B2 · Take Away" (take-away)
 │  ─────────────────────────     │
 │  ● Pending       12:01         │  ← v-stepper-item (completed)
 │  ● Received      12:01         │  ← completed
@@ -76,7 +76,7 @@ Real-time order tracking screen. Guests land here immediately after placing an o
 
 ### 4.5 Ready
 - Steps 1–3 checked; step 4 active
-- `v-alert type="success"` — "Your order is ready!"
+- `v-alert type="success"` — "Your order is ready!" (dine-in: "A staff member will bring it to your table"; take-away: "Please collect your order at the counter")
 - Chip turns green
 
 ### 4.6 Served
@@ -101,7 +101,7 @@ Real-time order tracking screen. Guests land here immediately after placing an o
 | Page loads | `GET /api/orders/{orderId}` → set initial state |
 | SignalR `OrderStatusChanged` | Update stepper state reactively (no reload) |
 | SignalR `PrintFailed` | Show warning alert |
-| Tap "Order More" | Navigate to `/menu/{restaurantId}` keeping `tableId` in session |
+| Tap "Order More" | Navigate to `/menu/{restaurantId}` keeping `tableId` in session (dine-in) or without tableId (take-away) |
 | Page refresh | Re-connect SignalR + re-fetch current status |
 
 ---
@@ -115,7 +115,7 @@ const connection = new HubConnectionBuilder()
   .withAutomaticReconnect()
   .build()
 
-connection.on('OrderStatusChanged', (payload: { orderId, status, timestamp }) => {
+connection.on('OrderStatusChanged', (payload: { orderId: string, orderType: 'table' | 'take_away', tableId: string | null, status: string, timestamp: string }) => {
   if (payload.orderId === currentOrderId) {
     orderStatus.value = payload.status
     statusHistory.value.push({ status: payload.status, at: payload.timestamp })
@@ -138,7 +138,8 @@ connection.invoke('JoinRestaurant', restaurantId)
 GET /api/orders/{orderId}
 Response: {
   id: string
-  tableId: string
+  orderType: 'table' | 'take_away'
+  tableId: string | null
   status: 'pending' | 'received' | 'preparing' | 'ready' | 'served' | 'cancelled'
   lines: [{ itemName, quantity, unitPriceEurCents, modifierSummary }]
   statusHistory: [{ status, occurredAt }]
@@ -157,3 +158,5 @@ From **E1 — Guest Ordering Flow**:
 - [ ] Print failure does not block guest from seeing order status
 - [ ] Guest can navigate back to menu and place another order from this screen
 - [ ] SignalR reconnects automatically if connection drops
+- [ ] "Ready" message directs dine-in guests to wait at table and take-away guests to collect at counter
+- [ ] Order header shows table number (dine-in) or "Take Away" label (take-away)

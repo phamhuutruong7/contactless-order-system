@@ -23,6 +23,7 @@ Màn hình làm việc chính của nhân viên phục vụ. Hiển thị tất 
 | `v-progress-linear` | Thanh tải indeterminate toàn trang khi SignalR mất kết nối |
 | `v-snackbar` | Toast khi đơn hàng chuyển sang trạng thái Sẵn Sàng |
 | `v-btn` (icon) | Nút làm mới (dự phòng thủ công) |
+| `v-card` (hàng đợi mang đi) | Phần riêng liệt kê các đơn mang đi đang chờ |
 
 ---
 
@@ -42,6 +43,11 @@ Màn hình làm việc chính của nhân viên phục vụ. Hiển thị tất 
 │  │  B4  │  │  B5  │                 │
 │  │ Bận  │  │ Bận  │                 │
 │  └──────┘  └──────┘                 │
+│                                     │
+│  🛍 Đơn Mang Đi                   │  ← v-card (hàng đợi mang đi)
+│  ────────────────────────────        │
+│  #C3D4 · Burger ×2, Bia ×1  [Sẵn Sàng]│
+│  #E5F6 · Khoai chiên ×1  [Đang Làm]  │
 │                                     │
 └─────────────────────────────────────┘
 ```
@@ -65,6 +71,10 @@ Màn hình làm việc chính của nhân viên phục vụ. Hiển thị tất 
 - Thẻ bàn bị ảnh hưởng chuyển sang đỏ với animation nhấp nháy
 - `v-snackbar` — "Bàn 3: Đơn hàng đã sẵn sàng"
 
+### 4.4 Đơn Mang Đi Sẵn Sàng
+- Hàng đợi mang đi làm nổi bật dòng đơn đó
+- `v-snackbar` — "Đơn Mang Đi #A1B2 sẵn sàng, vui lòng nhận tại quầy"
+
 ### 4.4 Mất Kết Nối SignalR
 - `v-progress-linear` indeterminate ở đầu trang
 - Các thẻ bàn mờ đi với overlay mất kết nối
@@ -76,7 +86,7 @@ Màn hình làm việc chính của nhân viên phục vụ. Hiển thị tất 
 | Hành động | Kết quả |
 |-----------|---------|
 | Tải trang | `GET /api/restaurants/{id}/tables` + đăng ký SignalR |
-| SignalR `OrderStatusChanged` (bất kỳ → Ready) | Cập nhật thẻ bàn thành đỏ, hiện snackbar |
+| SignalR `OrderStatusChanged` (bất kỳ → Ready) | Nếu `orderType = table`: cập nhật thẻ bàn thành đỏ, hiện snackbar. Nếu `orderType = take_away`: làm nổi bật hàng đợi mang đi, hiện snackbar mang đi |
 | SignalR `OrderStatusChanged` (Ready → Served) | Trả lại màu thẻ |
 | Nhấn thẻ bàn | Điều hướng đến `/staff/table/:tableId/orders` |
 | Nhấn đăng xuất | Xoá phiên → `/staff/login` |
@@ -87,6 +97,10 @@ Màn hình làm việc chính của nhân viên phục vụ. Hiển thị tất 
 
 ```typescript
 connection.on('OrderStatusChanged', (payload) => {
+  if (payload.orderType === 'take_away') {
+    if (payload.status === 'ready') showTakeAwaySnackbar(payload.orderId)
+    return
+  }
   const table = tables.value.find(t => t.id === payload.tableId)
   if (table) {
     table.hasReadyOrder = payload.status === 'ready'
@@ -120,3 +134,5 @@ Từ **E2 — Thao Tác Nhân Viên**:
 - [ ] Nhân viên được thông báo qua snackbar khi bất kỳ bàn nào chuyển sang Sẵn Sàng
 - [ ] Nhấn thẻ bàn điều hướng đến danh sách đơn hàng của bàn đó
 - [ ] Màn hình phản ánh trạng thái trực tiếp sau khi SignalR kết nối lại
+- [ ] Đơn mang đi hiển thị trong phần hàng đợi riêng biệt tách khỏi lưới bàn
+- [ ] Nhân viên được thông báo qua snackbar khi đơn mang đi sẵn sàng nhận tại quầy

@@ -91,7 +91,8 @@ erDiagram
   orders {
     uuid id PK
     uuid restaurant_id FK
-    uuid table_id FK
+    uuid table_id FK "nullable cho take-away"
+    string order_type "table | take_away"
     string status
     int total_pence
     timestamp created_at
@@ -129,7 +130,7 @@ erDiagram
   categories ||--o{ items : "liệt kê"
   items ||--o{ modifier_groups : "có"
   modifier_groups ||--o{ modifiers : "chứa"
-  tables ||--o{ orders : "tạo ra"
+  tables ||--o{ orders : "chỉ ăn tại chỗ"
   orders ||--o{ order_lines : "chứa"
   items ||--o{ order_lines : "được tham chiếu bởi"
 ```
@@ -158,6 +159,10 @@ erDiagram
 
 ### 2.5 Lưu Trữ Giá
 Tất cả giá được lưu dưới dạng số nguyên (xu hoặc đơn vị tiền tệ nhỏ nhất với VND). Không sử dụng số thực dấu phẩy động trong cơ sở dữ liệu hay API.
+
+### 2.6 Xác thực `order_type`
+- `table` — `table_id` phải không NULL; xác thực phía máy chủ; trả 422 nếu thiếu
+- `take_away` — `table_id` phải NULL; trả 422 nếu có `tableId` được gửi
 
 ---
 

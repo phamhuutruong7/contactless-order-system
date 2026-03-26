@@ -23,6 +23,7 @@ The primary working screen for floor staff. Shows all tables in the restaurant a
 | `v-progress-linear` | Global indeterminate loading bar on SignalR disconnect |
 | `v-snackbar` | Toast when an order transitions to Ready |
 | `v-btn` (icon) | Refresh button (manual fallback) |
+| `v-card` (take-away queue) | Dedicated section listing pending take-away orders |
 
 ---
 
@@ -42,6 +43,11 @@ The primary working screen for floor staff. Shows all tables in the restaurant a
 │  │  T4  │  │  T5  │                 │
 │  │ Busy │  │ Busy │                 │
 │  └──────┘  └──────┘                 │
+│                                     │
+│  🛍 Take Away Orders                │  ← v-card (take-away queue)
+│  ────────────────────────────        │
+│  #C3D4 · Burger ×2, Beer ×1  [Ready]  │
+│  #E5F6 · Fries ×1            [Prep'd] │
 │                                     │
 └─────────────────────────────────────┘
 ```
@@ -65,6 +71,10 @@ The primary working screen for floor staff. Shows all tables in the restaurant a
 - Affected table card turns red with pulse animation
 - `v-snackbar` — "Table 3: Order ready for delivery"
 
+### 4.4 Take Away Order Ready
+- Take-away queue card highlights the ready order row
+- `v-snackbar` — "Take Away order #A1B2 ready for collection at counter"
+
 ### 4.4 SignalR Disconnected
 - `v-progress-linear` indeterminate at top of page
 - Table cards grey out with a connection-lost overlay
@@ -76,7 +86,7 @@ The primary working screen for floor staff. Shows all tables in the restaurant a
 | Action | Behaviour |
 |--------|-----------|
 | Page load | `GET /api/restaurants/{id}/tables` + subscribe SignalR |
-| SignalR `OrderStatusChanged` (any → Ready) | Update table card to red, show snackbar |
+| SignalR `OrderStatusChanged` (any → Ready) | If `orderType = table`: update table card to red, show snackbar. If `orderType = take_away`: highlight take-away queue row, show take-away snackbar |
 | SignalR `OrderStatusChanged` (Ready → Served) | Update card colour back |
 | Tap table card | Navigate to `/staff/table/:tableId/orders` |
 | Tap logout | Clear session → `/staff/login` |
@@ -87,6 +97,10 @@ The primary working screen for floor staff. Shows all tables in the restaurant a
 
 ```typescript
 connection.on('OrderStatusChanged', (payload) => {
+  if (payload.orderType === 'take_away') {
+    if (payload.status === 'ready') showTakeAwaySnackbar(payload.orderId)
+    return
+  }
   const table = tables.value.find(t => t.id === payload.tableId)
   if (table) {
     table.hasReadyOrder = payload.status === 'ready'
@@ -120,3 +134,5 @@ From **E2 — Staff Operations**:
 - [ ] Staff are notified via snackbar when any table transitions to Ready
 - [ ] Tapping a table card navigates to that table's order list
 - [ ] Screen reflects live state after SignalR reconnect
+- [ ] Take-away orders appear in a dedicated queue section separate from the table grid
+- [ ] Staff are notified via snackbar when a take-away order is ready for collection

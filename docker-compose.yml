@@ -1,4 +1,4 @@
-# Dev environment — single stack
+# Production / CI only — for local dev: cd src/AppHost && dotnet run
 # Usage: docker compose --env-file .env up -d
 #
 # Requires .env with:  IMAGE_API, IMAGE_FRONTEND, DATABASE_URL,

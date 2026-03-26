@@ -33,9 +33,10 @@ sequenceDiagram
   participant S as Nhân Viên (Trình duyệt)
   participant P as Máy In CloudPRNT
 
-  G->>API: POST /api/orders { tableId, restaurantId, lines[] }
+  G->>API: POST /api/orders { orderType, tableId?, restaurantId, lines[] }
+  API->>API: Xác thực: orderType=table yêu cầu tableId; orderType=take_away cấm tableId (422 nếu sai)
   API->>DB: INSERT orders + order_lines (status=pending)
-  API->>HUB: Broadcast OrderReceived { orderId, tableId, lines[] }
+  API->>HUB: Broadcast OrderReceived { orderId, orderType, tableId, lines[] }
   HUB-->>S: Sự kiện OrderReceived
   HUB-->>G: OrderReceived (xác nhận)
   API->>API: Đưa lệnh in vào hàng đợi (ESC/POS Base64)
@@ -91,7 +92,7 @@ sequenceDiagram
 | `received` | Nhân viên | Nhân viên đã nhìn thấy và xác nhận đơn hàng |
 | `preparing` | Nhân viên | Bếp đang tích cực chế biến |
 | `ready` | Nhân viên | Món đã trang trí và sẵn sàng phục vụ |
-| `served` | Nhân viên | Đã mang ra bàn |
+| `served` | Nhân viên | Đã mang ra bàn (ăn tại chỗ) / khách lấy tại quầy (take-away) |
 | `cancelled` | Nhân viên | Đã huỷ trước khi hoàn thành |
 
 ---
@@ -100,4 +101,4 @@ sequenceDiagram
 
 - **SignalR với fanout nhóm** — tất cả thành viên nhóm nhận được sự kiện
 - **Khả năng phục hồi khi kết nối lại** — clients đăng ký lại nhóm khi kết nối lại; composable Vue xử lý exponential backoff (1 s → 2 s → 4 s … tối đa 30 s)
-- **Sự kiện bị bỏ lỡ** — khi kết nối lại, clients gọi `GET /api/orders?tableId=X&status=active` để đồng bộ lại trạng thái
+- **Sự kiện bị bỏ lỡ** — khi kết nối lại, clients gọi `GET /api/orders/{orderId}` (khách) hoặc `GET /api/orders?restaurantId=X&status=active` (nhân viên) để đồng bộ lại trạng thái

@@ -33,9 +33,10 @@ sequenceDiagram
   participant S as Staff (Browser)
   participant P as CloudPRNT Printer
 
-  G->>API: POST /api/orders { tableId, restaurantId, lines[] }
+  G->>API: POST /api/orders { orderType, tableId?, restaurantId, lines[] }
+  API->>API: Validate: orderType=table requires tableId; orderType=take_away forbids tableId (422 on mismatch)
   API->>DB: INSERT orders + order_lines (status=pending)
-  API->>HUB: Broadcast OrderReceived { orderId, tableId, lines[] }
+  API->>HUB: Broadcast OrderReceived { orderId, orderType, tableId, lines[] }
   HUB-->>S: OrderReceived event
   HUB-->>G: OrderReceived (confirmation)
   API->>API: Queue print job (ESC/POS Base64)
@@ -91,7 +92,7 @@ sequenceDiagram
 | `received` | Staff | Staff has seen and acknowledged the order |
 | `preparing` | Staff | Kitchen is actively preparing |
 | `ready` | Staff | Food is plated and ready for service |
-| `served` | Staff | Delivered to table |
+| `served` | Staff | Delivered to table (dine-in) / collected at counter (take-away) |
 | `cancelled` | Staff | Voided before completion |
 
 ---
@@ -100,4 +101,4 @@ sequenceDiagram
 
 - **SignalR with group fanout** — all group members receive the event
 - **Reconnect resilience** — clients re-subscribe to groups on reconnect; Vue composable handles exponential backoff (1 s → 2 s → 4 s … max 30 s)
-- **Missed events** — on reconnect, clients call `GET /api/orders?tableId=X&status=active` to reconcile state
+- **Missed events** — on reconnect, clients call `GET /api/orders/{orderId}` (guest) or `GET /api/orders?restaurantId=X&status=active` (staff) to reconcile state
