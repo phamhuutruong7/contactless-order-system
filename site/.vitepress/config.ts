@@ -40,7 +40,10 @@ const enSidebar = [
   },
   {
     text: 'User Stories',
-    items: [{ text: 'Epics & Stories', link: '/docs/stories/' }],
+    items: [
+      { text: 'Epics & Stories', link: '/docs/stories/' },
+      { text: 'Daily Report Spec', link: '/docs/stories/daily-report-spec/' },
+    ],
   },
   {
     text: 'Printing',
@@ -125,7 +128,10 @@ const viSidebar = [
   },
   {
     text: 'User Stories',
-    items: [{ text: 'Epics & Stories', link: '/vi/docs/stories/' }],
+    items: [
+      { text: 'Epics & Stories', link: '/vi/docs/stories/' },
+      { text: 'Đặc tả báo cáo ngày', link: '/vi/docs/stories/daily-report-spec/' },
+    ],
   },
   {
     text: 'In ấn',

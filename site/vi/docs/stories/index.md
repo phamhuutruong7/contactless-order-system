@@ -154,6 +154,7 @@
 |-------|--------------------|
 | Chủ quản lý PIN nhân viên | Có thể tạo, cập nhật, vô hiệu hoá tài khoản nhân viên |
 | Chủ sửa hồ sơ nhà hàng | Tên, logo, địa chỉ, giờ mở cửa được lưu và phản ánh công khai |
+| Chủ xem báo cáo doanh thu ngày | Bộ chọn ngày mặc định là hôm nay; bảng hiển thị tên món, đơn giá, số lượng đặt (trừ đơn hủy) và thành tiền; thẻ tóm tắt hiển thị tổng Doanh thu ước tính; nút "Xuất PDF" kích hoạt tạo PDF phía server (QuestPDF); hiển thị trạng thái loading khi đang tạo; trình duyệt tự tải xuống PDF; hiển thị trạng thái trống nếu không có đơn; trả về 403 nếu yêu cầu dữ liệu nhà hàng khác — [đặc tả chi tiết →](daily-report-spec.md) |
 
 ---
 

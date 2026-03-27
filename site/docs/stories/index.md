@@ -155,6 +155,7 @@
 |-------|---------------------|
 | Owner manages staff PINs | Can create, update, deactivate staff accounts |
 | Owner edits restaurant profile | Name, logo, address, opening hours saved and reflected publicly |
+| Owner views daily sales report | Date picker defaults to today; table shows item name, unit price, qty ordered (excl. cancelled), and subtotal per item; summary card shows grand total Estimated Revenue; "Export PDF" triggers server-side PDF generation (QuestPDF); loading indicator shown on button while generating; browser auto-downloads the PDF when ready; graceful empty state if no orders on selected date; 403 returned for another restaurant's data — [detailed spec →](daily-report-spec.md) |
 
 ---
 
