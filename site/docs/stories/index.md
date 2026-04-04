@@ -18,6 +18,10 @@
 | E8 | Staff Dashboard | 🔲 Planned |
 | E9 | Owner Dashboard & Reporting | 🔲 Planned |
 | E10 | Platform Admin Panel | 🔲 Planned |
+| E11 | Staff Work Sessions & Trinkgeld | 🔲 Planned |
+| E12 | Restaurant Identity & Subdomains | 🔲 Planned |
+| E11 | Staff Work Sessions & Trinkgeld | 🔲 Planned |
+| E12 | Restaurant Identity & Subdomains | 🔲 Planned |
 
 ---
 
@@ -97,8 +101,14 @@
 | Guest selects optional modifiers | Optional modifier groups shown as selectable add-ons; price delta displayed per option and reflected in total |
 | Guest selects table number at checkout | Dropdown lists the restaurant's tables; selection is required before order can be confirmed |
 | Guest reviews and confirms order | Summary shown; order submitted on confirm; confirmation screen with order # |
+| Multiple guests at the same table order together | Each guest scans the same QR code and browses independently; all their orders are grouped under the same table session automatically — no coordination needed between guests |
+| Guest places a take-away order | A take-away session works the same way — guest browses, orders, tracks status; no table assignment needed; the session closes automatically when all items are marked served |
+| Table resets cleanly for the next group of guests | After staff closes a table, the QR code immediately starts a fresh session; a new group of guests can scan and begin ordering without any delay |
 | Guest places additional order in same session | Subsequent orders linked to same table session |
 | Unavailable items shown but unorderable | Greyed out; "Unavailable" label; add-to-cart button disabled |
+| Multiple guests at the same table order together | Each guest scans the same QR code and browses independently; all their orders are grouped under the same table session automatically — no coordination needed between guests |
+| Guest places a take-away order | A take-away session works the same way — guest browses, orders, tracks status; no table assignment needed; the session closes automatically when all items are marked served |
+| Table resets cleanly for the next group of guests | After staff closes a table, the QR code immediately starts a fresh session; a new group of guests can scan and begin ordering without any delay |
 
 ---
 
@@ -135,16 +145,31 @@
 
 ## E8 — Staff Dashboard
 
-**As a** waiter, **I want** to see all table statuses and orders **so that** I can manage service efficiently.
-
-| Story | Acceptance Criteria |
-|-------|---------------------|
-| Staff logs in with PIN | PIN validated; staff scoped to their restaurant |
-| Floor view shows all tables | Each table shows: free / occupied / has-ready-order |
+**Staff checks in to start serving | After logging in, staff taps a "Check In" button to mark the start of their active serving period; the system records the exact time |
+| Staff checks out temporarily | Staff can tap "Check Out" at any point — for example during a break or handover — without ending their overall working session; the time away is not counted in their sales total |
+| Staff checks in again after a break | Staff can check back in as many times as needed within the same working day; each check-in / check-out pair is tracked separately |
+| Staff only sees their assigned tables | The floor view shows only the tables assigned to that staff member by the owner; other tables are visible but greyed out and cannot be interacted with |
+| Floor view shows table statuses | Each of the staff's assigned tables shows: free / occupied / has-ready-order — updated in real time |
 | Staff can view orders per table | Full order list for a table; item status visible |
-| Staff closes table after guest payment | After guest pays at the counter, staff closes session; table status returns to "free" |
-| Staff can cancel an order | Order status set to "Cancelled"; guest notified via SignalR |
+| Staff closes table after guest payment | After the guests pay, staff taps "Close Table"; the table resets to free and the next guests can start a new session immediately |
+| Staff can cancel an order | Order status set to "Cancelled"; guest notified |
+| Staff ends their working session | When their shift is done, staff taps "End Session" to finalise their work day; the system calculates the total value of all orders served at their tables during the active check-in windows |
+| Staff sees their Trinkgeld summary | After ending the session, staff sees a clear summary: how many tables they served, the total order value, and the amount they need to hand back to the cashier; the rest is their Trinkgeld — [detailed spec →](staff-sessions-spec/)
+| Staff logs in with PIN | PIN validated; staff scoped to their restaurant |
+| Staff checks in to start serving | After logging in, staff taps a "Check In" button to mark the start of their active serving period; the system records the exact time |
+| Staff checks out temporarily | Staff can tap "Check Out" at any point — for example during a break or handover — without ending their overall working session; the time away is not counted in their sales total |
+| Staff checks in again after a break | Staff can check back in as many times as needed within the same working day; each check-in / check-out pair is tracked separately |
+| Staff only sees their assigned tables | The floor view shows only the tables assigned to that staff member by the owner; other tables are visible but greyed out and cannot be interacted with |
+| Floor view shows table statuses | Each of the staff's assigned tables shows: free / occupied / has-ready-order — updated in real time |
+| Staff can view orders per table | Full order list for a table; item status visible |
+| Staff closes table after guest payment | After the guests pay, staff taps "Close Table"; the table resets to free and the next guests can start a new session immediately |
+| Staff can cancel an order | Order status set to "Cancelled"; guest notified |
+| Staff ends their working session | When their shift is done, staff taps "End Session" to finalise their work day; the system calculates the total value of all orders served at their tables during the active check-in windows |
+| Staff sees their Trinkgeld summary | After ending the session, staff sees a clear summary: how many tables they served, the total order value, and the amount they need to hand back to the cashier; the rest is their Trinkgeld — [detailed spec →](staff-sessions-spec/) |
 
+| Owner assigns tables to each staff member | In the Staff Management section, owner selects which tables belong to which staff member; staff only see and manage their assigned tables during service |
+| Owner closes the day | Owner taps "Close Day" to generate the final daily sales report; the report includes all orders served that day (excluding cancellations), the total revenue, and a per-staff sales breakdown |
+| Daily report is available for 48 hours | The generated daily report remains accessible for 48 hours; after that it is automatically removed; owner is clearly shown the expiry time when the report is opened |
 ---
 
 ## E9 — Owner Dashboard & Reporting
@@ -156,10 +181,47 @@
 | Owner manages staff PINs | Can create, update, deactivate staff accounts |
 | Owner edits restaurant profile | Name, logo, address, opening hours saved and reflected publicly |
 | Owner views daily sales report | Date picker defaults to today; table shows item name, unit price, qty ordered (excl. cancelled), and subtotal per item; summary card shows grand total Estimated Revenue; "Export PDF" triggers server-side PDF generation (QuestPDF); loading indicator shown on button while generating; browser auto-downloads the PDF when ready; graceful empty state if no orders on selected date; 403 returned for another restaurant's data — [detailed spec →](daily-report-spec.md) |
+| Owner assigns tables to each staff member | In the Staff Management section, owner selects which tables belong to which staff member; staff only see and manage their assigned tables during service |
+| Owner closes the day | Owner taps "Close Day" to generate the final daily sales report; the report includes all orders served that day (excluding cancellations), the total revenue, and a per-staff sales breakdown |
+| Daily report is available for 48 hours | The generated daily report remains accessible for 48 hours; after that it is automatically removed; owner is clearly shown the expiry time when the report is opened |
+| Admin assigns a URL slug to a restaurant | When approving a new restaurant, admin confirms the restaurant's unique short name (slug), e.g. "pho-saigon"; this becomes part of their web address at pho-saigon.contactless-order-system.de |
+| Admin views aggregate daily report | Admin can select any date and see a summary across all active restaurants: number of orders and total revenue per restaurant for that day |
 
 ---
 
-## E10 — Platform Admin Panel
+## E11 — Staff Work Sessions & Trinkgeld
+
+**As a** waiter, **I want** to track my own sales during a shift **so that** I know how much I earned in tips (Trinkgeld) and can settle up with the cashier correctly.
+
+| Story | Acceptance Criteria |
+|-------|---------------------|
+| Staff understands the check-in concept | The app makes it clear that checking in means "I am now actively serving"; nothing is counted while checked out |
+| Check-in and check-out can happen multiple times | A staff member may check in and check out three times in one day (e.g. lunch shift, break, dinner shift); all active periods are counted together |
+| Sales are only counted during active periods | Orders served while the staff member was checked out are not included in their Trinkgeld calculation |
+| Session summary is shown at end of day | The summary screen clearly shows: total value of orders served, the amount to hand to the cashier, and the remainder which is the staff's Trinkgeld |
+| Session data persists during a break | If staff checks out and logs off the app, their session is still open; checking back in from any device continues the same session |
+| Owner can see each staff member's session summary | Owner can review the session breakdown per staff member from the owner dashboard — useful for end-of-day reconciliation |
+
+*Detailed flow and screen descriptions → [Staff Sessions Spec](staff-sessions-spec/)*
+
+---
+
+## E12 — Restaurant Identity & Subdomains
+
+**As a** restaurant owner, **I want** my restaurant to have its own web address **so that** my guests have a clean and recognisable link to scan.
+
+| Story | Acceptance Criteria |
+|-------|---------------------|
+| Each restaurant gets a unique short name (slug) | When a restaurant is approved, it receives a short name like "pho-saigon"; this is used in all URLs for that restaurant |
+| Restaurant is accessible at its own subdomain | Guests and staff reach the restaurant at pho-saigon.contactless-order-system.de — no restaurant ID numbers visible in the address |
+| QR codes use the branded subdomain URL | All QR codes generated for tables use the restaurant's subdomain address; scanning the QR takes the guest directly to that restaurant's menu |
+| Staff login is also scoped to the subdomain | Staff log in at the restaurant's own subdomain; the correct restaurant is detected automatically |
+| Owner dashboard accessible at the subdomain | Owner manages their restaurant from their own subdomain address |
+| Slug is unique across the platform | Two restaurants cannot have the same slug; admin resolves conflicts at registration time |
+
+---
+
+*Stories continuously updated as sprints progress. Last updated: April
 
 **As a** platform administrator, **I want** to manage restaurant tenants **so that** I can onboard and support clients.
 
@@ -170,7 +232,41 @@
 | Admin reviews pending registrations | List of owners with "Pending Approval" status; Google account info shown; approve/reject actions available |
 | Admin approves restaurant owner | Owner status set to "Active"; owner receives notification and can access dashboard |
 | Admin suspends / reactivates restaurant | Suspended restaurant shows maintenance page to guests |
+| Admin assigns a URL slug to a restaurant | When approving a new restaurant, admin confirms the restaurant's unique short name (slug), e.g. "pho-saigon"; this becomes part of their web address at pho-saigon.contactless-order-system.de |
+| Admin views aggregate daily report | Admin can select any date and see a summary across all active restaurants: number of orders and total revenue per restaurant for that day |
 
 ---
 
-*Stories continuously updated as sprints progress. Last updated: March 2026.*
+## E11 — Staff Work Sessions & Trinkgeld
+
+**As a** waiter, **I want** to track my own sales during a shift **so that** I know how much I earned in tips (Trinkgeld) and can settle up with the cashier correctly.
+
+| Story | Acceptance Criteria |
+|-------|---------------------|
+| Staff understands the check-in concept | The app makes it clear that checking in means "I am now actively serving"; nothing is counted while checked out |
+| Check-in and check-out can happen multiple times | A staff member may check in and check out three times in one day (e.g. lunch shift, break, dinner shift); all active periods are counted together |
+| Sales are only counted during active periods | Orders served while the staff member was checked out are not included in their Trinkgeld calculation |
+| Session summary is shown at end of day | The summary screen clearly shows: total value of orders served, the amount to hand to the cashier, and the remainder which is the staff's Trinkgeld |
+| Session data persists during a break | If staff checks out and logs off the app, their session is still open; checking back in from any device continues the same session |
+| Owner can see each staff member's session summary | Owner can review the session breakdown per staff member from the owner dashboard — useful for end-of-day reconciliation |
+
+*Detailed flow and screen descriptions → [Staff Sessions Spec](staff-sessions-spec/)*
+
+---
+
+## E12 — Restaurant Identity & Subdomains
+
+**As a** restaurant owner, **I want** my restaurant to have its own web address **so that** my guests have a clean and recognisable link to scan.
+
+| Story | Acceptance Criteria |
+|-------|---------------------|
+| Each restaurant gets a unique short name (slug) | When a restaurant is approved, it receives a short name like "pho-saigon"; this is used in all URLs for that restaurant |
+| Restaurant is accessible at its own subdomain | Guests and staff reach the restaurant at pho-saigon.contactless-order-system.de — no restaurant ID numbers visible in the address |
+| QR codes use the branded subdomain URL | All QR codes generated for tables use the restaurant's subdomain address; scanning the QR takes the guest directly to that restaurant's menu |
+| Staff login is also scoped to the subdomain | Staff log in at the restaurant's own subdomain; the correct restaurant is detected automatically |
+| Owner dashboard accessible at the subdomain | Owner manages their restaurant from their own subdomain address |
+| Slug is unique across the platform | Two restaurants cannot have the same slug; admin resolves conflicts at registration time |
+
+---
+
+*Stories continuously updated as sprints progress. Last updated: April 2026.*

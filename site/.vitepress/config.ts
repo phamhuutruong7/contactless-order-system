@@ -43,6 +43,8 @@ const enSidebar = [
     items: [
       { text: 'Epics & Stories', link: '/docs/stories/' },
       { text: 'Daily Report Spec', link: '/docs/stories/daily-report-spec/' },
+      { text: 'Staff Sessions & Trinkgeld Spec', link: '/docs/stories/staff-sessions-spec/' },
+      { text: 'Table Sessions Spec', link: '/docs/stories/table-sessions-spec/' },
     ],
   },
   {
@@ -131,6 +133,8 @@ const viSidebar = [
     items: [
       { text: 'Epics & Stories', link: '/vi/docs/stories/' },
       { text: 'Đặc tả báo cáo ngày', link: '/vi/docs/stories/daily-report-spec/' },
+      { text: 'Đặc tả ca làm việc & Trinkgeld', link: '/vi/docs/stories/staff-sessions-spec/' },
+      { text: 'Đặc tả phiên bàn', link: '/vi/docs/stories/table-sessions-spec/' },
     ],
   },
   {
